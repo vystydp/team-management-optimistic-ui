@@ -1,0 +1,327 @@
+---
+# Composition for TeamEnvironment
+# This defines HOW to provision the infrastructure for a team environment
+# For Phase 2, we provision local resources (Postgres/Redis via Helm, dummy API via K8s)
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: teamenvironment-local
+  labels:
+    provider: local
+    environment: development
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XTeamEnvironment
+  
+  mode: Pipeline
+  pipeline:
+  # 1. Postgres database via Helm (bitnami/postgresql)
+  - name: postgres-database
+    base:
+      apiVersion: helm.crossplane.io/v1beta1
+      kind: Release
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          chart:
+            name: postgresql
+            repository: https://charts.bitnami.com/bitnami
+            version: "13.2.24"
+          namespace: team-environments
+          # Values will be patched based on claim spec
+          values:
+            auth:
+              enablePostgresUser: true
+              postgresPassword: "dev-password-change-in-prod"
+            primary:
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+    patches:
+    # Patch release name from claim name
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-postgres"
+    # Patch namespace based on team
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.teamId
+      toFieldPath: spec.forProvider.namespace
+      transforms:
+      - type: string
+        string:
+          fmt: "team-%s"
+    # Conditional: only create if enableDatabase is true
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.enableDatabase
+      toFieldPath: spec.forProvider.skipCRDs
+      transforms:
+      - type: map
+        map:
+          "true": false
+          "false": true
+    # Size-based resource scaling
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.size
+      toFieldPath: spec.forProvider.values.primary.resources.requests.memory
+      transforms:
+      - type: map
+        map:
+          small: "256Mi"
+          medium: "512Mi"
+          large: "1Gi"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.size
+      toFieldPath: spec.forProvider.values.primary.resources.limits.memory
+      transforms:
+      - type: map
+        map:
+          small: "512Mi"
+          medium: "1Gi"
+          large: "2Gi"
+    # Status back to composite
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.state
+      toFieldPath: status.databaseReady
+      transforms:
+      - type: map
+        map:
+          deployed: true
+    - type: ToCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: status.databaseHost
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-postgresql.team-environments.svc.cluster.local"
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.state
+      toFieldPath: status.databasePort
+      transforms:
+      - type: map
+        map:
+          deployed: 5432
+
+  # 2. Redis cache via Helm (bitnami/redis)
+  - name: redis-cache
+    base:
+      apiVersion: helm.crossplane.io/v1beta1
+      kind: Release
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          chart:
+            name: redis
+            repository: https://charts.bitnami.com/bitnami
+            version: "18.4.0"
+          namespace: team-environments
+          values:
+            auth:
+              enabled: false  # Simplified for local dev
+            master:
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-redis"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.teamId
+      toFieldPath: spec.forProvider.namespace
+      transforms:
+      - type: string
+        string:
+          fmt: "team-%s"
+    # Conditional: only create if enableCache is true
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.enableCache
+      toFieldPath: spec.forProvider.skipCRDs
+      transforms:
+      - type: map
+        map:
+          "true": false
+          "false": true
+    # Size-based resource scaling
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.size
+      toFieldPath: spec.forProvider.values.master.resources.requests.memory
+      transforms:
+      - type: map
+        map:
+          small: "128Mi"
+          medium: "256Mi"
+          large: "512Mi"
+    # Status back to composite
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.state
+      toFieldPath: status.cacheReady
+      transforms:
+      - type: map
+        map:
+          deployed: true
+    - type: ToCompositeFieldPath
+      fromFieldPath: metadata.name
+      toFieldPath: status.cacheHost
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-redis-master.team-environments.svc.cluster.local"
+
+  # 3. Team API deployment (dummy app for Phase 2)
+  - name: team-api-deployment
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          manifest:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              namespace: team-environments
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: team-api
+              template:
+                metadata:
+                  labels:
+                    app: team-api
+                spec:
+                  containers:
+                  - name: api
+                    image: nginx:alpine  # Dummy image for Phase 2
+                    ports:
+                    - containerPort: 80
+                    resources:
+                      requests:
+                        memory: "64Mi"
+                        cpu: "50m"
+                      limits:
+                        memory: "128Mi"
+                        cpu: "100m"
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api-deployment"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: spec.forProvider.manifest.metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.teamId
+      toFieldPath: spec.forProvider.manifest.metadata.namespace
+      transforms:
+      - type: string
+        string:
+          fmt: "team-%s"
+    # Size-based replica scaling
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.size
+      toFieldPath: spec.forProvider.manifest.spec.replicas
+      transforms:
+      - type: map
+        map:
+          small: 1
+          medium: 2
+          large: 3
+    # Status back
+    - type: ToCompositeFieldPath
+      fromFieldPath: status.atProvider.manifest.status.availableReplicas
+      toFieldPath: status.apiReady
+      transforms:
+      - type: math
+        math:
+          type: Multiply
+          multiply: 0  # Will be > 0 if ready
+      - type: map
+        map:
+          0: false
+          1: true
+          2: true
+          3: true
+
+  # 4. Team API service
+  - name: team-api-service
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          manifest:
+            apiVersion: v1
+            kind: Service
+            metadata:
+              namespace: team-environments
+            spec:
+              type: ClusterIP
+              selector:
+                app: team-api
+              ports:
+              - port: 80
+                targetPort: 80
+                protocol: TCP
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api-service"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: spec.forProvider.manifest.metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api-svc"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.teamId
+      toFieldPath: spec.forProvider.manifest.metadata.namespace
+      transforms:
+      - type: string
+        string:
+          fmt: "team-%s"
+    # Status back - construct API URL
+    - type: ToCompositeFieldPath
+      fromFieldPath: spec.forProvider.manifest.metadata.name
+      toFieldPath: status.apiUrl
+      transforms:
+      - type: string
+        string:
+          fmt: "http://%s.team-environments.svc.cluster.local"
+
+  # Write status summary message
+  writeConnectionSecretsToNamespace: crossplane-system

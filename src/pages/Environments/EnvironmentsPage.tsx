@@ -5,6 +5,10 @@ import { ActionButton } from '../../components/shared/ActionButton';
 import { useEnvironmentStore } from '../../stores/environmentStore';
 import { EnvironmentForm } from './EnvironmentForm';
 import { TeamEnvironmentStatus } from '../../types/aws';
+import * as environmentsService from '../../services/environmentsService';
+import { useEnvironmentsPolling } from '../../hooks/useEnvironmentPolling';
+
+const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
 
 /**
  * Environments page - Team environment management
@@ -15,9 +19,9 @@ export const EnvironmentsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const { environments, templates, setEnvironments, setTemplates } = useEnvironmentStore();
 
-  // Mock data for development - will be replaced with API calls
+  // Load templates and environments on mount
   useEffect(() => {
-    // Mock templates
+    // Mock templates (Phase 2: templates are still hardcoded)
     setTemplates([
       {
         id: 'tpl-sandbox',
@@ -83,9 +87,44 @@ export const EnvironmentsPage = () => {
       },
     ]);
 
-    // Mock environments - empty for now
-    setEnvironments([]);
+    // Load existing environments from backend
+    if (USE_REAL_BACKEND) {
+      environmentsService.listEnvironments()
+        .then(response => {
+          setEnvironments(response.environments);
+        })
+        .catch(error => {
+          console.error('Failed to load environments:', error);
+        });
+    } else {
+      setEnvironments([]);
+    }
   }, [setEnvironments, setTemplates]);
+
+  // Poll environments for status updates (Phase 2.8: Crossplane reconciliation)
+  useEnvironmentsPolling(environments, {
+    enabled: USE_REAL_BACKEND,
+    onUpdate: (updatedEnv) => {
+      const { commitOptimistic } = useEnvironmentStore.getState();
+      // Find if this is an optimistic update
+      const store = useEnvironmentStore.getState();
+      const optimisticUpdate = Array.from(store.optimisticUpdates.values())
+        .find(update => update.data.id === updatedEnv.id);
+      
+      if (optimisticUpdate) {
+        // Commit the optimistic update with real data
+        commitOptimistic(optimisticUpdate.id, updatedEnv);
+      } else {
+        // Direct update for non-optimistic changes
+        setEnvironments(environments.map(env => 
+          env.id === updatedEnv.id ? updatedEnv : env
+        ));
+      }
+    },
+    onError: (error) => {
+      console.error('Polling error:', error);
+    },
+  });
 
   // Mock AWS accounts - will be replaced with actual store
   const mockAwsAccounts = [
@@ -145,18 +184,34 @@ export const EnvironmentsPage = () => {
 
     setShowForm(false);
 
-    // Simulate API call
+    // Real API call (Phase 2.8)
     try {
-      // In Phase 2, this will be a real API call via MSW
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Success - commit the optimistic update
-      const finalEnv = {
-        ...optimisticEnv,
-        status: 'READY' as const,
-        updatedAt: new Date(),
-      };
-      commitOptimistic(updateId, finalEnv);
+      if (USE_REAL_BACKEND) {
+        // Call real backend - returns environment with CREATING status
+        const createdEnv = await environmentsService.createEnvironment({
+          name: data.name,
+          teamId: 'team-1', // Mock team ID for Phase 2
+          templateType: template.type as any,
+          size: (template.parameters.size || 'small') as any,
+          ttlDays: data.ttl ? Math.ceil((data.ttl.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : undefined,
+          enableDatabase: true,
+          databaseEngine: 'postgres',
+          enableCache: true,
+        });
+        
+        // Commit with real backend data
+        commitOptimistic(updateId, createdEnv);
+        // Polling hook will watch for CREATING → READY transition
+      } else {
+        // MSW mock simulation
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const finalEnv = {
+          ...optimisticEnv,
+          status: 'READY' as const,
+          updatedAt: new Date(),
+        };
+        commitOptimistic(updateId, finalEnv);
+      }
     } catch (error) {
       // Error - rollback the optimistic update
       rollbackOptimistic(updateId);
@@ -205,11 +260,11 @@ export const EnvironmentsPage = () => {
     }
   };
 
-  const readyCount = environments.filter((env) => env.status === 'READY').length;
-  const creatingCount = environments.filter((env) => 
+  const readyCount = environments?.filter((env) => env.status === 'READY').length ?? 0;
+  const creatingCount = environments?.filter((env) => 
     env.status === 'CREATING' || env.status === 'VALIDATING'
-  ).length;
-  const pausedCount = environments.filter((env) => env.status === 'PAUSED').length;
+  ).length ?? 0;
+  const pausedCount = environments?.filter((env) => env.status === 'PAUSED').length ?? 0;
 
   const handlePauseEnvironment = async (envId: string) => {
     const { updateEnvironmentOptimistic, commitOptimistic, rollbackOptimistic } = useEnvironmentStore.getState();
@@ -221,9 +276,15 @@ export const EnvironmentsPage = () => {
     const updateId = updateEnvironmentOptimistic(envId, updatedEnv, env);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const finalEnv = { ...updatedEnv, status: 'PAUSED' as const, updatedAt: new Date() };
-      commitOptimistic(updateId, finalEnv);
+      if (USE_REAL_BACKEND) {
+        // Phase 2: Simulate pause by reducing size
+        const pausedEnv = await environmentsService.pauseEnvironment(envId);
+        commitOptimistic(updateId, { ...pausedEnv, status: 'PAUSED' as const });
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const finalEnv = { ...updatedEnv, status: 'PAUSED' as const, updatedAt: new Date() };
+        commitOptimistic(updateId, finalEnv);
+      }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to pause environment:', error);
@@ -240,9 +301,15 @@ export const EnvironmentsPage = () => {
     const updateId = updateEnvironmentOptimistic(envId, updatedEnv, env);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const finalEnv = { ...updatedEnv, status: 'READY' as const, updatedAt: new Date() };
-      commitOptimistic(updateId, finalEnv);
+      if (USE_REAL_BACKEND) {
+        // Phase 2: Resume by restoring size
+        const resumedEnv = await environmentsService.resumeEnvironment(envId);
+        commitOptimistic(updateId, resumedEnv);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const finalEnv = { ...updatedEnv, status: 'READY' as const, updatedAt: new Date() };
+        commitOptimistic(updateId, finalEnv);
+      }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to resume environment:', error);
@@ -259,9 +326,14 @@ export const EnvironmentsPage = () => {
     const updateId = deleteEnvironmentOptimistic(envId, env);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      // Commit the deletion
-      commitOptimistic(updateId);
+      if (USE_REAL_BACKEND) {
+        // Call real backend delete
+        await environmentsService.deleteEnvironment(envId);
+        commitOptimistic(updateId);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        commitOptimistic(updateId);
+      }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to delete environment:', error);
@@ -321,7 +393,7 @@ export const EnvironmentsPage = () => {
             <div className="text-xs font-semibold text-porsche-neutral-600 uppercase tracking-wide font-porsche mb-1">
               Total Environments
             </div>
-            <div className="text-4xl font-bold text-porsche-neutral-800 font-porsche">{environments.length}</div>
+            <div className="text-4xl font-bold text-porsche-neutral-800 font-porsche">{environments?.length ?? 0}</div>
           </div>
 
           {/* Ready - PRIMARY with Visual Anchor */}
@@ -332,7 +404,7 @@ export const EnvironmentsPage = () => {
             </div>
             <div className="text-4xl font-bold text-porsche-success font-porsche">{readyCount}</div>
             <div className="mt-2 text-xs text-porsche-neutral-600 font-porsche">
-              {environments.length > 0 ? `${Math.round((readyCount / environments.length) * 100)}%` : '0%'} healthy
+              {(environments?.length ?? 0) > 0 ? `${Math.round((readyCount / (environments?.length ?? 1)) * 100)}%` : '0%'} healthy
             </div>
           </div>
 
@@ -365,7 +437,7 @@ export const EnvironmentsPage = () => {
       </div>
 
       {/* Environment List or Empty State */}
-      {environments.length === 0 ? (
+      {(environments?.length ?? 0) === 0 ? (
         /* Empty State */
         <div className="bg-white/90 backdrop-blur-porsche-sm shadow-porsche-md rounded-porsche-lg border border-porsche-silver">
           <div className="px-4 py-12 sm:px-6 lg:px-8 text-center">
@@ -416,8 +488,8 @@ export const EnvironmentsPage = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-porsche-silver">
-                {environments.map((env) => (
+              <tbody className="bg-white divide-y divide-porsche-neutral-200">
+                {environments?.map((env) => (
                   <tr key={env.id} className="hover:bg-porsche-neutral-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-semibold text-sm text-porsche-neutral-800 font-porsche">{env.name}</div>
@@ -437,7 +509,7 @@ export const EnvironmentsPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-porsche-neutral-600 font-porsche">
-                      {env.parameters.ttl ? new Date(env.parameters.ttl).toLocaleDateString() : 'No expiration'}
+                      {env.parameters?.ttl ? new Date(env.parameters.ttl).toLocaleDateString() : 'No expiration'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
@@ -464,7 +536,7 @@ export const EnvironmentsPage = () => {
 
           {/* Mobile Card View */}
           <div className="lg:hidden divide-y divide-porsche-silver">
-            {environments.map((env) => (
+            {environments?.map((env) => (
               <div key={env.id} className="p-fluid-md hover:bg-porsche-neutral-50 transition-colors">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -491,7 +563,7 @@ export const EnvironmentsPage = () => {
                   <div className="flex justify-between">
                     <span className="text-porsche-neutral-600 font-porsche">TTL:</span>
                     <span className="text-porsche-neutral-800 font-porsche">
-                      {env.parameters.ttl ? new Date(env.parameters.ttl).toLocaleDateString() : 'No expiration'}
+                      {env.parameters?.ttl ? new Date(env.parameters.ttl).toLocaleDateString() : 'No expiration'}
                     </span>
                   </div>
                 </div>
