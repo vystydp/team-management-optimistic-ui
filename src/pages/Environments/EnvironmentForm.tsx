@@ -96,10 +96,11 @@ export const EnvironmentForm: React.FC<EnvironmentFormProps> = ({
 
   return (
     <ModalOverlay
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      isOpen={true}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 data-[entering]:animate-in data-[entering]:fade-in data-[exiting]:animate-out data-[exiting]:fade-out"
       isDismissable={!isSubmitting}
     >
-      <Modal className="bg-white rounded-porsche-lg shadow-porsche-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <Modal className="bg-white rounded-porsche-lg shadow-porsche-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto data-[entering]:animate-in data-[entering]:zoom-in-95 data-[exiting]:animate-out data-[exiting]:zoom-out-95">
         <Dialog className="outline-none">
           {({ close }) => (
             <form onSubmit={handleSubmit} className="p-fluid-lg">
