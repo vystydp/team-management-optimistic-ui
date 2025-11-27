@@ -2,7 +2,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { TeamMember } from '../types/team';
 
 // In-memory storage for demo
-let teamMembers: TeamMember[] = [
+const teamMembers: TeamMember[] = [
   {
     id: '1',
     name: 'John Doe',

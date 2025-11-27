@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TeamMemberCard } from '../TeamMemberCard';
-import { TeamMember } from '../../types/team';
+import { TeamMember } from '../../../types/team';
 
 describe('TeamMemberCard', () => {
   const mockMember: TeamMember = {

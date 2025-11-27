@@ -2,15 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Porsche Design System - Official Design Tokens */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Typography - Porsche Next Font Family */
+  --font-porsche-next: 'Porsche Next W La', 'Porsche Next', system-ui, -apple-system, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Colors - Console Theme (Porsche-derived, instrument panel bias) */
+  --color-primary: #D5001C;  /* Reserve for errors, alerts, destructive actions only */
+  --color-primary-console: #223971;  /* Deep navy - primary UI accent */
+  --color-primary-console-soft: #2d4a8a;  /* Lighter navy for hovers */
+  --color-canvas: #F5F6F7;   /* Slightly cooler, more technical */
+  --color-surface: #FFFFFF;
+  --color-shading: rgba(0, 0, 0, 0.06);  /* Increased contrast for module feel */
+  --color-frosted: rgba(255, 255, 255, 0.95);  /* Slightly more opaque */
+  --color-contrast-low: #D1D5DB;   /* Stronger borders for equipment modules */
+  --color-contrast-medium: #6B7280;
+  --color-contrast-high: #1F2937;  /* Darker text for tool aesthetic */
+  --color-neutral-dark: #374151;   /* New: for "always-on" states */
+  
+  /* Status colors - desaturated backgrounds (5-10% tints) */
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.05);  /* 5% tint for console feel */
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.08);  /* 8% tint */
+  --color-error: #D5001C;
+  --color-error-bg: rgba(213, 0, 28, 0.05);  /* 5% tint */
+  
+  /* Interaction states - more neutral */
+  --color-hover: rgba(0, 0, 0, 0.04);  /* Neutral hover, not red */
+  --color-active: rgba(0, 0, 0, 0.08);
+  --color-focus: #D5001C;
+  --color-disabled: rgba(0, 0, 0, 0.20);
+  
+  /* Spacing - Fluid Scale (Official Porsche Tokens) */
+  --spacing-fluid-xs: clamp(0.25rem, 0.52vw, 0.5rem);
+  --spacing-fluid-sm: clamp(0.5rem, 1.04vw, 1rem);
+  --spacing-fluid-md: clamp(1rem, 2.08vw, 2rem);
+  --spacing-fluid-lg: clamp(1.5rem, 3.13vw, 3rem);
+  --spacing-fluid-xl: clamp(2rem, 4.17vw, 4rem);
+  
+  /* Border Radius */
+  --border-radius-small: 0.25rem;
+  --border-radius-medium: 0.5rem;
+  --border-radius-large: 0.75rem;
+  
+  /* Shadows - Porsche Design System */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Motion - Duration & Easing */
+  --transition-duration-short: 150ms;
+  --transition-duration-moderate: 200ms;
+  --transition-duration-long: 300ms;
+  --ease-base: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-in: cubic-bezier(0.42, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.58, 1);
+  
+  /* Blur Effects */
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  
+  /* Grid System */
+  --grid-gap: clamp(1rem, 2.08vw, 2rem);
+  
+  /* Base Styles */
+  font-family: var(--font-porsche-next);
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  font-weight: var(--font-weight-normal);
+  color-scheme: light;
+  color: var(--color-contrast-high);
+  background-color: var(--color-canvas);
+  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -23,6 +90,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: linear-gradient(135deg, #FAFAFA 0%, #F3F4F6 100%);
 }
 
 #root {
@@ -40,5 +108,29 @@ body {
 
   .optimistic-error {
     @apply bg-red-50 border-red-200;
+  }
+
+  /* Force SVG icons to inherit text color */
+  .porsche-icon svg {
+    fill: currentColor !important;
+    color: inherit;
+  }
+  
+  .porsche-icon svg path,
+  .porsche-icon svg circle,
+  .porsche-icon svg rect,
+  .porsche-icon svg polygon,
+  .porsche-icon svg line,
+  .porsche-icon svg polyline {
+    fill: currentColor !important;
+    stroke: currentColor !important;
+  }
+  
+  /* Ensure disabled buttons also inherit icon color */
+  button:disabled .porsche-icon svg,
+  button:disabled .porsche-icon svg path,
+  button:disabled .porsche-icon svg circle,
+  button:disabled .porsche-icon svg rect {
+    fill: currentColor !important;
   }
 }
