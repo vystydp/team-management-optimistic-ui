@@ -1,0 +1,28 @@
+---
+# Test: Direct Helm Release for Postgres (without Composition)
+apiVersion: helm.crossplane.io/v1beta1
+kind: Release
+metadata:
+  name: test-postgres
+spec:
+  providerConfigRef:
+    name: default
+  forProvider:
+    chart:
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: "13.2.24"
+    namespace: team-environments
+    skipCreateNamespace: true  # Namespace already exists
+    values:
+      auth:
+        enablePostgresUser: true
+        postgresPassword: "dev-password"
+      primary:
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

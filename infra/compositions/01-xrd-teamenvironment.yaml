@@ -1,0 +1,106 @@
+---
+# CompositeResourceDefinition (XRD) for TeamEnvironment
+# This defines the API schema that applications use to request team environments
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xteamenvironments.platform.porsche.com
+spec:
+  group: platform.porsche.com
+  names:
+    kind: XTeamEnvironment
+    plural: xteamenvironments
+  claimNames:
+    kind: TeamEnvironmentClaim
+    plural: teamenvironmentclaims
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              # Environment metadata
+              name:
+                type: string
+                description: "Human-readable name for the environment"
+              templateType:
+                type: string
+                description: "Template type: sandbox, development, staging, production"
+                enum:
+                - sandbox
+                - development
+                - staging
+                - production
+              teamId:
+                type: string
+                description: "ID of the team that owns this environment"
+              # Infrastructure configuration
+              size:
+                type: string
+                description: "Environment size: small, medium, large"
+                enum:
+                - small
+                - medium
+                - large
+                default: small
+              ttlDays:
+                type: integer
+                description: "Time to live in days (optional, for temporary environments)"
+                minimum: 1
+                maximum: 90
+              # Database configuration
+              enableDatabase:
+                type: boolean
+                description: "Whether to provision a database"
+                default: true
+              databaseEngine:
+                type: string
+                description: "Database engine: postgres or mysql"
+                enum:
+                - postgres
+                - mysql
+                default: postgres
+              # Cache configuration
+              enableCache:
+                type: boolean
+                description: "Whether to provision a cache (Redis)"
+                default: true
+            required:
+            - name
+            - templateType
+            - teamId
+          status:
+            type: object
+            properties:
+              # Composed resource statuses
+              databaseReady:
+                type: boolean
+                description: "Database is provisioned and ready"
+              cacheReady:
+                type: boolean
+                description: "Cache is provisioned and ready"
+              apiReady:
+                type: boolean
+                description: "API deployment is ready"
+              # Connection details
+              databaseHost:
+                type: string
+                description: "Database connection host"
+              databasePort:
+                type: integer
+                description: "Database connection port"
+              cacheHost:
+                type: string
+                description: "Cache connection host"
+              apiUrl:
+                type: string
+                description: "API service URL"
+              # Overall status
+              message:
+                type: string
+                description: "Human-readable status message"

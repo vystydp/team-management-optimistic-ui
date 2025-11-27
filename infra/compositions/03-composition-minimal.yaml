@@ -1,0 +1,43 @@
+---
+# Minimal Working Composition for Crossplane 2.x
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: teamenvironment-local
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XTeamEnvironment
+  
+  # Crossplane 2.x uses "mode" and "pipeline" instead of "resources"
+  mode: Pipeline
+  pipeline:
+  - step: postgres
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+      - name: postgres
+        base:
+          apiVersion: helm.crossplane.io/v1beta1
+          kind: Release
+          spec:
+            providerConfigRef:
+              name: default
+            forProvider:
+              chart:
+                name: postgresql
+                repository: https://charts.bitnami.com/bitnami
+                version: "13.2.24"
+              namespace: team-environments
+              values:
+                auth:
+                  enablePostgresUser: true
+                  postgresPassword: "dev-password"
+                primary:
+                  resources:
+                    requests:
+                      memory: "256Mi"
+                      cpu: "100m"
