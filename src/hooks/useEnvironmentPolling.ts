@@ -131,7 +131,12 @@ export function useEnvironmentsPolling(
         );
 
         if (isMountedRef.current && onUpdate) {
-          updates.forEach(updatedEnv => onUpdate(updatedEnv));
+          updates.forEach(updatedEnv => {
+            // Skip null responses (404s during initial creation)
+            if (updatedEnv) {
+              onUpdate(updatedEnv);
+            }
+          });
         }
       } catch (error) {
         if (isMountedRef.current && onError) {

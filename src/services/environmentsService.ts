@@ -52,14 +52,19 @@ export async function listEnvironments(): Promise<EnvironmentListResponse> {
 /**
  * Get a single environment by ID
  */
-export async function getEnvironment(id: string): Promise<TeamEnvironment> {
+export async function getEnvironment(id: string): Promise<TeamEnvironment | null> {
   if (!USE_REAL_BACKEND) {
     const response = await fetch(`/api/environments/${id}`);
+    if (response.status === 404) return null;
     if (!response.ok) throw new Error('Environment not found');
     return response.json();
   }
 
   const response = await fetch(`${BACKEND_URL}/api/environments/${id}`);
+  if (response.status === 404) {
+    // Environment not yet created in K8s - this is expected during CREATING status
+    return null;
+  }
   if (!response.ok) {
     throw new Error(`Failed to fetch environment: ${response.statusText}`);
   }

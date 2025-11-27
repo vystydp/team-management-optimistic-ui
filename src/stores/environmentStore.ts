@@ -118,9 +118,12 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
 
       // If we have actual data from server, update the environment
       if (actualData && update.type !== 'delete') {
+        // Replace the optimistic environment with actual backend data
+        // For creates: replace by optimistic ID (update.data.id) with new backend ID (actualData.id)
+        // For updates: replace by matching ID
         return {
           environments: state.environments.map((env) =>
-            env.id === actualData.id ? actualData : env
+            env.id === update.data.id ? actualData : env
           ),
           optimisticUpdates: updates,
         };

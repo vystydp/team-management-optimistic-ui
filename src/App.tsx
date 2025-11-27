@@ -6,7 +6,7 @@ import { AwsAccountsPage } from './pages/AwsAccounts/AwsAccountsPage';
 import { PorscheIcon } from './components/shared/PorscheIcon';
 
 function App() {
-  const [currentTab, setCurrentTab] = useState<NavigationTab>('teams');
+  const [currentTab, setCurrentTab] = useState<NavigationTab>('environments');
 
   const renderControlPlanePage = () => (
     <div className="space-y-fluid-lg">
