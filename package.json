@@ -16,7 +16,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@porsche-design-system/assets": "^5.0.2",
     "react": "^18.3.1",
+    "react-aria-components": "^1.13.0",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.0"
   },
