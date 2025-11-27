@@ -1,0 +1,137 @@
+---
+# Simplified Composition for TeamEnvironment (Crossplane 2.x compatible)
+# For Phase 2, we provision local resources
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: teamenvironment-local
+  labels:
+    provider: local
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XTeamEnvironment
+  
+  mode: Resources
+  resources:
+  # 1. Postgres database via Helm
+  - name: postgres
+    base:
+      apiVersion: helm.crossplane.io/v1beta1
+      kind: Release
+      metadata:
+        annotations:
+          crossplane.io/external-name: # patched
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          chart:
+            name: postgresql
+            repository: https://charts.bitnami.com/bitnami
+            version: "13.2.24"
+          namespace: team-environments
+          values:
+            auth:
+              enablePostgresUser: true
+              postgresPassword: "dev-password"
+            primary:
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-postgres"
+  
+  # 2. Redis cache via Helm
+  - name: redis
+    base:
+      apiVersion: helm.crossplane.io/v1beta1
+      kind: Release
+      metadata:
+        annotations:
+          crossplane.io/external-name: # patched
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          chart:
+            name: redis
+            repository: https://charts.bitnami.com/bitnami
+            version: "18.4.0"
+          namespace: team-environments
+          values:
+            auth:
+              enabled: false
+            master:
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "50m"
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: metadata.annotations[crossplane.io/external-name]
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-redis"
+  
+  # 3. Dummy API deployment
+  - name: api-deployment
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha2
+      kind: Object
+      spec:
+        providerConfigRef:
+          name: default
+        forProvider:
+          manifest:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: # patched
+              namespace: team-environments
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: # patched
+              template:
+                metadata:
+                  labels:
+                    app: # patched
+                spec:
+                  containers:
+                  - name: api
+                    image: nginx:alpine
+                    ports:
+                    - containerPort: 80
+    patches:
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: spec.forProvider.manifest.metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels.app
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api"
+    - type: FromCompositeFieldPath
+      fromFieldPath: spec.name
+      toFieldPath: spec.forProvider.manifest.spec.template.metadata.labels.app
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-api"
