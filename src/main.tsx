@@ -12,7 +12,9 @@ async function enableMocking() {
   // Don't start MSW if using real backend
   const useRealBackend = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
   if (useRealBackend) {
-    console.log('[MSW] Disabled - using real backend at', import.meta.env.VITE_BACKEND_URL);
+    if (import.meta.env.DEV) {
+      console.log('[MSW] Disabled - using real backend at', import.meta.env.VITE_BACKEND_URL);
+    }
     return;
   }
 

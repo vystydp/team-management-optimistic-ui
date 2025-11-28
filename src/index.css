@@ -86,15 +86,13 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #FAFAFA 0%, #F3F4F6 100%);
 }
 
 #root {
   width: 100%;
+  min-height: 100vh;
 }
 
 @layer components {

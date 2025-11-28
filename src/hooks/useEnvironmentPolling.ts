@@ -56,6 +56,10 @@ export function useEnvironmentPolling(
       try {
         const updatedEnv = await getEnvironment(environmentId);
         
+        if (!updatedEnv) {
+          return; // Environment not found yet (404 during creation)
+        }
+        
         if (isMountedRef.current && onUpdate) {
           onUpdate(updatedEnv);
         }

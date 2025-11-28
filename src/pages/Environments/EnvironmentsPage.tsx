@@ -112,8 +112,16 @@ export const EnvironmentsPage = () => {
         .find(update => update.data.id === updatedEnv.id);
       
       if (optimisticUpdate) {
-        // Commit the optimistic update with real data
-        commitOptimistic(optimisticUpdate.id, updatedEnv);
+        // Only commit if backend state matches what we expect
+        // For pause/resume, wait until backend confirms the status change
+        const expectedStatus = optimisticUpdate.data.status;
+        if (updatedEnv.status === expectedStatus || 
+            (expectedStatus === 'PAUSING' && updatedEnv.status === 'PAUSED') ||
+            (expectedStatus === 'RESUMING' && updatedEnv.status === 'READY')) {
+          // Backend has caught up, commit the change
+          commitOptimistic(optimisticUpdate.id, updatedEnv);
+        }
+        // Otherwise, keep the optimistic state until backend catches up
       } else {
         // Direct update for non-optimistic changes
         setEnvironments(environments.map(env => 
