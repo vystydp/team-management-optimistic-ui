@@ -1,0 +1,180 @@
+---
+# Composition for GuardrailedAccount using Pipeline mode
+# Now compatible with function-patch-and-transform installed
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: guardrailed-account-pipeline
+  labels:
+    provider: aws
+    type: guardrailed-account
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XGuardrailedAccount
+  
+  mode: Pipeline
+  
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          # Status tracking ConfigMap
+          - name: status-configmap
+            base:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                namespace: team-environments
+              data:
+                accountId: ""
+                accountName: ""
+                status: "applied"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountId
+                toFieldPath: data.accountId
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountName
+                toFieldPath: data.accountName
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "guardrail-status-%s"
+          
+          # CloudTrail Setup Job (simulation)
+          - name: cloudtrail-setup-job
+            base:
+              apiVersion: batch/v1
+              kind: Job
+              metadata:
+                namespace: team-environments
+              spec:
+                ttlSecondsAfterFinished: 300
+                template:
+                  spec:
+                    restartPolicy: Never
+                    containers:
+                      - name: setup
+                        image: busybox:1.36
+                        command:
+                          - sh
+                          - -c
+                          - |
+                            echo "Simulating CloudTrail setup for AWS Account"
+                            sleep 5
+                            echo "CloudTrail enabled successfully"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "cloudtrail-setup-%s"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountId
+                toFieldPath: spec.template.spec.containers[0].command[2]
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: |
+                        echo "Simulating CloudTrail setup for AWS Account %s"
+                        sleep 5
+                        echo "CloudTrail enabled successfully"
+          
+          # AWS Config Setup Job (simulation)
+          - name: config-setup-job
+            base:
+              apiVersion: batch/v1
+              kind: Job
+              metadata:
+                namespace: team-environments
+              spec:
+                ttlSecondsAfterFinished: 300
+                template:
+                  spec:
+                    restartPolicy: Never
+                    containers:
+                      - name: setup
+                        image: busybox:1.36
+                        command:
+                          - sh
+                          - -c
+                          - |
+                            echo "Simulating AWS Config setup for AWS Account"
+                            sleep 5
+                            echo "AWS Config enabled successfully"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "config-setup-%s"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountId
+                toFieldPath: spec.template.spec.containers[0].command[2]
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: |
+                        echo "Simulating AWS Config setup for AWS Account %s"
+                        sleep 5
+                        echo "AWS Config enabled successfully"
+          
+          # Budget Setup Job (simulation)
+          - name: budget-setup-job
+            base:
+              apiVersion: batch/v1
+              kind: Job
+              metadata:
+                namespace: team-environments
+              spec:
+                ttlSecondsAfterFinished: 300
+                template:
+                  spec:
+                    restartPolicy: Never
+                    containers:
+                      - name: setup
+                        image: busybox:1.36
+                        command:
+                          - sh
+                          - -c
+                          - |
+                            echo "Simulating Budget setup for AWS Account"
+                            sleep 5
+                            echo "Budget created successfully"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "budget-setup-%s"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountId
+                toFieldPath: spec.template.spec.containers[0].command[2]
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: |
+                        echo "Simulating Budget setup for AWS Account %s"
+                        sleep 5
+                        echo "Budget created successfully"

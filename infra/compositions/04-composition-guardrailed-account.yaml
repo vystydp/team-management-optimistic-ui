@@ -1,0 +1,276 @@
+---
+# Composition for GuardrailedAccount
+# Note: This is a placeholder composition for Phase 3.4 MVP
+# Full AWS resource provisioning requires provider-aws to be installed
+# For now, this demonstrates the structure and will be enhanced in later phases
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: guardrailed-account-basic
+  labels:
+    provider: aws
+    type: guardrailed-account
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XGuardrailedAccount
+  
+  # Using Resources mode (compatible with Crossplane without functions installed)
+  # Placeholder mode: This composition creates ConfigMaps and Jobs to track guardrail status
+  # In production with provider-aws, these would be real AWS resources
+  mode: Resources
+  
+  resources:
+      
+      # Status ConfigMap (placeholder for guardrail tracking)
+      - name: guardrail-status
+        base:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: crossplane
+              guardrail.platform.porsche.com/account-id: ""
+          data:
+            accountId: ""
+            accountName: ""
+            roleArn: ""
+            ownerEmail: ""
+            cloudTrailStatus: "NotConfigured"
+            configStatus: "NotConfigured"
+            budgetStatus: "NotConfigured"
+            guardrailsApplied: "false"
+            lastUpdated: ""
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountId
+          toFieldPath: metadata.labels[guardrail.platform.porsche.com/account-id]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountId
+          toFieldPath: data.accountId
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountName
+          toFieldPath: data.accountName
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.roleArn
+          toFieldPath: data.roleArn
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ownerEmail
+          toFieldPath: data.ownerEmail
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "guardrail-status-%s"
+        - type: ToCompositeFieldPath
+          fromFieldPath: data.cloudTrailStatus
+          toFieldPath: status.cloudTrailStatus
+        - type: ToCompositeFieldPath
+          fromFieldPath: data.configStatus
+          toFieldPath: status.configStatus
+        - type: ToCompositeFieldPath
+          fromFieldPath: data.budgetStatus
+          toFieldPath: status.budgetStatus
+      
+      # CloudTrail Job (placeholder - simulates CloudTrail setup)
+      - name: cloudtrail-setup
+        base:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: crossplane
+              guardrail.platform.porsche.com/component: cloudtrail
+          spec:
+            ttlSecondsAfterFinished: 300
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: setup-cloudtrail
+                  image: busybox:1.36
+                  command:
+                  - sh
+                  - -c
+                  - |
+                    echo "Phase 3.4 MVP: CloudTrail setup placeholder"
+                    echo "In production, this would:"
+                    echo "  1. Create S3 bucket: cloudtrail-logs-ACCOUNT_ID"
+                    echo "  2. Enable CloudTrail in all regions"
+                    echo "  3. Enable log file validation"
+                    echo "  4. Configure SNS notifications"
+                    echo "Account ID: $ACCOUNT_ID"
+                    echo "Role ARN: $ROLE_ARN"
+                    echo "CloudTrail setup complete (simulated)"
+                    sleep 5
+                  env:
+                  - name: ACCOUNT_ID
+                    value: ""
+                  - name: ROLE_ARN
+                    value: ""
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountId
+          toFieldPath: spec.template.spec.containers[0].env[0].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.roleArn
+          toFieldPath: spec.template.spec.containers[0].env[1].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "cloudtrail-setup-%s"
+      
+      # AWS Config Job (placeholder - simulates Config setup)
+      - name: config-setup
+        base:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: crossplane
+              guardrail.platform.porsche.com/component: config
+          spec:
+            ttlSecondsAfterFinished: 300
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: setup-config
+                  image: busybox:1.36
+                  command:
+                  - sh
+                  - -c
+                  - |
+                    echo "Phase 3.4 MVP: AWS Config setup placeholder"
+                    echo "In production, this would:"
+                    echo "  1. Create S3 bucket: config-logs-ACCOUNT_ID"
+                    echo "  2. Create Config recorder"
+                    echo "  3. Create delivery channel"
+                    echo "  4. Enable required rules:"
+                    echo "     - encrypted-volumes"
+                    echo "     - s3-bucket-public-read-prohibited"
+                    echo "     - iam-password-policy"
+                    echo "Account ID: $ACCOUNT_ID"
+                    echo "AWS Config setup complete (simulated)"
+                    sleep 5
+                  env:
+                  - name: ACCOUNT_ID
+                    value: ""
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountId
+          toFieldPath: spec.template.spec.containers[0].env[0].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "config-setup-%s"
+      
+      # Budget Job (placeholder - simulates Budget creation)
+      - name: budget-setup
+        base:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: crossplane
+              guardrail.platform.porsche.com/component: budget
+          spec:
+            ttlSecondsAfterFinished: 300
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                - name: setup-budget
+                  image: busybox:1.36
+                  command:
+                  - sh
+                  - -c
+                  - |
+                    echo "Phase 3.4 MVP: AWS Budget setup placeholder"
+                    echo "In production, this would:"
+                    echo "  1. Create monthly budget: budget-ACCOUNT_ID"
+                    echo "  2. Set limit: \$BUDGET_AMOUNT USD"
+                    echo "  3. Configure alert at $THRESHOLD%"
+                    echo "  4. Send notifications to: $OWNER_EMAIL"
+                    echo "Account ID: $ACCOUNT_ID"
+                    echo "Budget: \$$BUDGET_AMOUNT USD"
+                    echo "Threshold: $THRESHOLD%"
+                    echo "Owner: $OWNER_EMAIL"
+                    echo "Budget setup complete (simulated)"
+                    sleep 5
+                  env:
+                  - name: ACCOUNT_ID
+                    value: ""
+                  - name: BUDGET_AMOUNT
+                    value: "100"
+                  - name: THRESHOLD
+                    value: "80"
+                  - name: OWNER_EMAIL
+                    value: ""
+        patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.accountId
+          toFieldPath: spec.template.spec.containers[0].env[0].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.budgetAmountUSD
+          toFieldPath: spec.template.spec.containers[0].env[1].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.budgetThresholdPercent
+          toFieldPath: spec.template.spec.containers[0].env[2].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.ownerEmail
+          toFieldPath: spec.template.spec.containers[0].env[3].value
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: metadata.name
+          transforms:
+          - type: string
+            string:
+              fmt: "budget-setup-%s"
+
+---
+# Note: Production Composition with provider-aws
+# 
+# When provider-aws is installed, this composition would include:
+# 
+# 1. S3 Buckets:
+#    - CloudTrail logs bucket with versioning and encryption
+#    - AWS Config logs bucket with lifecycle policies
+# 
+# 2. CloudTrail:
+#    - Multi-region trail
+#    - Log file validation enabled
+#    - SNS topic for notifications
+#    - S3 bucket policy for CloudTrail access
+# 
+# 3. AWS Config:
+#    - Configuration recorder for all resources
+#    - Delivery channel to S3
+#    - Config rules:
+#      - encrypted-volumes (ensure EBS encryption)
+#      - s3-bucket-public-read-prohibited
+#      - iam-password-policy
+#      - root-account-mfa-enabled
+#      - cloudtrail-enabled
+# 
+# 4. AWS Budgets:
+#    - Monthly cost budget
+#    - Alert thresholds (50%, 80%, 100%)
+#    - Email notifications to account owner
+#    - SNS topic for budget alerts
+# 
+# 5. IAM Policies (via SCPs at Organization level):
+#    - Restrict regions (deny all except allowed list)
+#    - Deny expensive services (SageMaker, EMR, Redshift)
+#    - Require encryption (S3, EBS, RDS)
+#    - Enforce tagging policies
+# 
+# See: infra/compositions/README.md for AWS provider setup guide

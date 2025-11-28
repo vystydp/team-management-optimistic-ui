@@ -17,6 +17,11 @@ import type {
   EnvironmentListResponse,
 } from './types';
 import authRoutes from './routes/auth.routes';
+import awsAccountRoutes from './routes/aws-account.routes';
+import accountRequestRoutes from './routes/account-request.routes';
+import { requireAuth } from './middleware/auth.middleware';
+import { RealOrganizationsClient, MockOrganizationsClient } from './services/aws-organizations.client';
+import { startAccountWorker } from './services/account-worker';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +60,11 @@ app.get('/health', (req: Request, res: Response) => {
 // Auth routes
 app.use('/auth', authRoutes);
 
+// AWS account routes (protected by authentication)
+app.use('/api/aws', requireAuth, awsAccountRoutes);
+
+// Account request routes (authentication handled in router)
+app.use('/api/aws/account-requests', accountRequestRoutes);
 // GET /api/environments - List all environments
 app.get('/api/environments', async (req: Request, res: Response) => {
   try {
@@ -169,7 +179,7 @@ app.delete('/api/environments/:id', async (req: Request, res: Response) => {
 });
 
 // Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
@@ -189,6 +199,26 @@ app.listen(PORT, () => {
   console.log(`   POST   /api/environments`);
   console.log(`   PATCH  /api/environments/:id`);
   console.log(`   DELETE /api/environments/:id`);
+  console.log(`   GET    /api/aws/accounts`);
+  console.log(`   POST   /api/aws/link-account`);
+  console.log(`   POST   /api/aws/secure-account`);
+  console.log(`   DELETE /api/aws/accounts/:id`);
+  // Start account worker (real Organizations client when AWS creds available)
+  try {
+    const hasAwsCreds = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+    const orgClient = hasAwsCreds
+      ? new RealOrganizationsClient({ region: process.env.AWS_REGION })
+      : new MockOrganizationsClient();
+    if (hasAwsCreds) {
+      console.log('🔐 AWS credentials detected — starting RealOrganizationsClient for account worker');
+    } else {
+      console.log('⚠️  No AWS credentials found — using MockOrganizationsClient for account worker');
+    }
+    startAccountWorker(orgClient);
+    console.log('🔁 Account worker started');
+  } catch (err) {
+    console.error('Failed to start account worker', err);
+  }
 });
 
 export default app;

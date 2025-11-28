@@ -1,0 +1,137 @@
+---
+# CompositeResourceDefinition (XRD) for GuardrailedAccount
+# This defines the API for applying security guardrails to AWS accounts
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xguardrailedaccounts.platform.porsche.com
+spec:
+  group: platform.porsche.com
+  names:
+    kind: XGuardrailedAccount
+    plural: xguardrailedaccounts
+  claimNames:
+    kind: GuardrailedAccountClaim
+    plural: guardrailedaccountclaims
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              # AWS Account details
+              accountId:
+                type: string
+                description: "12-digit AWS account ID"
+                pattern: '^[0-9]{12}$'
+              accountName:
+                type: string
+                description: "Friendly name for the account"
+              roleArn:
+                type: string
+                description: "IAM role ARN for cross-account access"
+                pattern: '^arn:aws:iam::[0-9]{12}:role/[\w+=,.@-]+$'
+              ownerEmail:
+                type: string
+                description: "Account owner email for notifications"
+              
+              # Guardrail configuration
+              enableCloudTrail:
+                type: boolean
+                description: "Enable CloudTrail for audit logging"
+                default: true
+              enableConfig:
+                type: boolean
+                description: "Enable AWS Config for compliance monitoring"
+                default: true
+              budgetAmountUSD:
+                type: integer
+                description: "Monthly budget limit in USD"
+                default: 100
+                minimum: 10
+                maximum: 10000
+              budgetThresholdPercent:
+                type: integer
+                description: "Budget alert threshold percentage"
+                default: 80
+                minimum: 50
+                maximum: 100
+              
+              # Regions
+              primaryRegion:
+                type: string
+                description: "Primary AWS region"
+                default: "us-east-1"
+              allowedRegions:
+                type: array
+                description: "List of allowed AWS regions"
+                items:
+                  type: string
+                default:
+                - us-east-1
+                - eu-west-1
+            
+            required:
+            - accountId
+            - accountName
+            - roleArn
+            - ownerEmail
+          
+          status:
+            type: object
+            properties:
+              # Overall status
+              guardrailsApplied:
+                type: boolean
+                description: "Whether all guardrails are successfully applied"
+              
+              # Individual component statuses
+              cloudTrailStatus:
+                type: string
+                description: "CloudTrail provisioning status"
+                enum:
+                - NotConfigured
+                - Creating
+                - Active
+                - Failed
+              configStatus:
+                type: string
+                description: "AWS Config provisioning status"
+                enum:
+                - NotConfigured
+                - Creating
+                - Active
+                - Failed
+              budgetStatus:
+                type: string
+                description: "Budget provisioning status"
+                enum:
+                - NotConfigured
+                - Creating
+                - Active
+                - Failed
+              
+              # Resource details
+              cloudTrailBucket:
+                type: string
+                description: "S3 bucket name for CloudTrail logs"
+              configBucket:
+                type: string
+                description: "S3 bucket name for AWS Config logs"
+              budgetName:
+                type: string
+                description: "AWS Budget name"
+              
+              # Error information
+              errorMessage:
+                type: string
+                description: "Error message if guardrails failed"
+              lastUpdated:
+                type: string
+                format: date-time
+                description: "Last status update timestamp"
