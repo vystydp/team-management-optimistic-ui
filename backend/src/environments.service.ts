@@ -6,14 +6,19 @@ import type {
   CreateEnvironmentRequest,
   UpdateEnvironmentRequest,
 } from './types';
+import type {
+  HelmRelease,
+  JsonPatchOperation,
+} from './types/kubernetes';
+import { isK8sListResponse } from './types/kubernetes';
 
 /**
  * Maps Helm Release status to TeamEnvironment status
  */
-function mapHelmReleaseToStatus(release: any): TeamEnvironmentStatus {
+function mapHelmReleaseToStatus(release: HelmRelease): TeamEnvironmentStatus {
   const conditions = release.status?.conditions || [];
-  const syncedCondition = conditions.find((c: any) => c.type === 'Synced');
-  const readyCondition = conditions.find((c: any) => c.type === 'Ready');
+  const syncedCondition = conditions.find(c => c.type === 'Synced');
+  const readyCondition = conditions.find(c => c.type === 'Ready');
 
   // Check for errors
   if (syncedCondition?.status === 'False' && syncedCondition?.reason === 'ReconcileError') {
@@ -53,32 +58,46 @@ export async function listEnvironments(): Promise<TeamEnvironment[]> {
       'app.porsche.com/managed-by=team-management'
     );
 
-    const releases = (response.body as any).items || [];
+    const body = response.body;
+    if (!isK8sListResponse<HelmRelease>(body)) {
+      throw new Error('Invalid Kubernetes API response: expected list');
+    }
+    const releases = body.items;
 
-    return releases.map((release: any) => {
+    return releases.map((release: HelmRelease) => {
       const metadata = release.metadata || {};
       const labels = metadata.labels || {};
       const annotations = metadata.annotations || {};
 
-      const status = mapHelmReleaseToStatus(release);
+      // Check if environment is paused (annotation-based)
+      const isPaused = annotations['app.porsche.com/paused'] === 'true';
+      
+      let status = mapHelmReleaseToStatus(release);
+      
+      // Override status if paused
+      if (isPaused && status === 'READY') {
+        status = 'PAUSED';
+        console.log(`[listEnvironments] ${metadata.name}: Overriding to PAUSED`);
+      }
+      
       const errorMessage = status === 'ERROR' 
-        ? release.status?.conditions?.find((c: any) => c.type === 'Synced')?.message 
+        ? release.status?.conditions?.find(c => c.type === 'Synced')?.message 
         : undefined;
 
-      return {
+      const env: TeamEnvironment = {
         id: metadata.name,
         name: annotations['app.porsche.com/environment-name'] || metadata.name,
         teamId: labels['app.porsche.com/team-id'] || 'unknown',
-        templateType: (labels['app.porsche.com/template-type'] || 'development') as any,
-        status,
-        size: (labels['app.porsche.com/size'] || 'small') as any,
+        templateType: (labels['app.porsche.com/template-type'] || 'development') as 'sandbox' | 'development' | 'staging' | 'production',
+        status: status,
+        size: (labels['app.porsche.com/size'] || 'small') as 'small' | 'medium' | 'large',
         ttlDays: annotations['app.porsche.com/ttl-days'] 
           ? parseInt(annotations['app.porsche.com/ttl-days'], 10) 
           : undefined,
-        createdAt: metadata.creationTimestamp,
-        updatedAt: metadata.creationTimestamp,
+        createdAt: metadata.creationTimestamp || new Date().toISOString(),
+        updatedAt: metadata.creationTimestamp || new Date().toISOString(),
         enableDatabase: labels['app.porsche.com/enable-database'] === 'true',
-        databaseEngine: (labels['app.porsche.com/database-engine'] || 'postgres') as any,
+        databaseEngine: (labels['app.porsche.com/database-engine'] || 'postgres') as 'postgres' | 'mysql',
         enableCache: labels['app.porsche.com/enable-cache'] === 'true',
         // Crossplane status
         databaseReady: release.status?.atProvider?.state === 'deployed',
@@ -86,14 +105,18 @@ export async function listEnvironments(): Promise<TeamEnvironment[]> {
           ? `${metadata.name}-postgresql.${config.appNamespace}.svc.cluster.local` 
           : undefined,
         errorMessage,
-      } as TeamEnvironment;
+      };
+      
+      console.log(`[listEnvironments] ${env.id}: Returning status=${env.status}`);
+      return env;
     });
-  } catch (error: any) {
-    if (error.statusCode === 404) {
+  } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
       // No releases found, return empty array
       return [];
     }
-    console.error('Error listing environments:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error listing environments:', message);
     throw error;
   }
 }
@@ -110,42 +133,58 @@ export async function getEnvironment(id: string): Promise<TeamEnvironment | null
       id
     );
 
-    const release = response.body as any;
+    const release = response.body as HelmRelease;
     const metadata = release.metadata || {};
     const labels = metadata.labels || {};
     const annotations = metadata.annotations || {};
 
-    const status = mapHelmReleaseToStatus(release);
+    // Check if environment is paused (annotation-based)
+    const isPaused = annotations['app.porsche.com/paused'] === 'true';
+    
+    let status = mapHelmReleaseToStatus(release);
+    
+    console.log(`[Debug] ${id}: isPaused=${isPaused}, baseStatus=${status}, annotations=`, annotations);
+    
+    // Override status if paused
+    if (isPaused && status === 'READY') {
+      status = 'PAUSED';
+      console.log(`[Debug] ${id}: Overriding status to PAUSED`);
+    }
+    
     const errorMessage = status === 'ERROR' 
-      ? release.status?.conditions?.find((c: any) => c.type === 'Synced')?.message 
+      ? release.status?.conditions?.find(c => c.type === 'Synced')?.message 
       : undefined;
 
-    return {
+    const env: TeamEnvironment = {
       id: metadata.name,
       name: annotations['app.porsche.com/environment-name'] || metadata.name,
       teamId: labels['app.porsche.com/team-id'] || 'unknown',
-      templateType: (labels['app.porsche.com/template-type'] || 'development') as any,
-      status,
-      size: (labels['app.porsche.com/size'] || 'small') as any,
+      templateType: (labels['app.porsche.com/template-type'] || 'development') as 'sandbox' | 'development' | 'staging' | 'production',
+      status: status,
+      size: (labels['app.porsche.com/size'] || 'small') as 'small' | 'medium' | 'large',
       ttlDays: annotations['app.porsche.com/ttl-days'] 
         ? parseInt(annotations['app.porsche.com/ttl-days'], 10) 
         : undefined,
-      createdAt: metadata.creationTimestamp,
-      updatedAt: metadata.creationTimestamp,
+      createdAt: metadata.creationTimestamp || new Date().toISOString(),
+      updatedAt: metadata.creationTimestamp || new Date().toISOString(),
       enableDatabase: labels['app.porsche.com/enable-database'] === 'true',
-      databaseEngine: (labels['app.porsche.com/database-engine'] || 'postgres') as any,
+      databaseEngine: (labels['app.porsche.com/database-engine'] || 'postgres') as 'postgres' | 'mysql',
       enableCache: labels['app.porsche.com/enable-cache'] === 'true',
       databaseReady: release.status?.atProvider?.state === 'deployed',
       databaseHost: release.status?.atProvider?.state === 'deployed' 
         ? `${metadata.name}-postgresql.${config.appNamespace}.svc.cluster.local` 
         : undefined,
       errorMessage,
-    } as TeamEnvironment;
-  } catch (error: any) {
-    if (error.statusCode === 404) {
+    };
+    
+    console.log(`[getEnvironment] ${env.id}: Returning status=${env.status}`);
+    return env;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
       return null;
     }
-    console.error(`Error getting environment ${id}:`, error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error getting environment ${id}:`, message);
     throw error;
   }
 }
@@ -231,7 +270,7 @@ export async function createEnvironment(
     console.log(`Creating Helm Release: ${id} (cluster-scoped resource)`);
     console.log(`Helm Release spec:`, JSON.stringify(helmRelease, null, 2));
 
-    const response = await k8sCustomApi.createClusterCustomObject(
+    const _response = await k8sCustomApi.createClusterCustomObject(
       config.helmReleaseGroup,
       config.helmReleaseVersion,
       config.helmReleasePlural,
@@ -258,13 +297,16 @@ export async function createEnvironment(
       cacheReady: false,
       apiReady: false,
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error creating environment:', error);
-    console.error('Error details:', {
-      message: error.message,
-      statusCode: error.statusCode,
-      body: error.body,
-    });
+    if (error && typeof error === 'object') {
+      const err = error as { message?: string; statusCode?: number; body?: unknown };
+      console.error('Error details:', {
+        message: err.message,
+        statusCode: err.statusCode,
+        body: err.body,
+      });
+    }
     throw error;
   }
 }
@@ -282,8 +324,52 @@ export async function updateEnvironment(
       return null;
     }
 
-    // For now, we'll support size updates by patching the Helm Release values
+    const patches: JsonPatchOperation[] = [];
+
+    // Handle status updates (pause/resume)
+    if (updates.status) {
+      console.log(`[Environment] Updating status for ${id}: ${existing.status} → ${updates.status}`);
+      
+      if (updates.status === 'PAUSED') {
+        // Pause: Scale replicas to 0
+        patches.push({
+          op: 'replace',
+          path: '/spec/forProvider/values/primary/replicaCount',
+          value: 0,
+        });
+        patches.push({
+          op: 'replace',
+          path: '/metadata/annotations/app.porsche.com~1paused',
+          value: 'true',
+        });
+        patches.push({
+          op: 'replace',
+          path: '/metadata/annotations/app.porsche.com~1paused-at',
+          value: new Date().toISOString(),
+        });
+      } else if (updates.status === 'READY' && existing.status === 'PAUSED') {
+        // Resume: Scale replicas back to 1
+        patches.push({
+          op: 'replace',
+          path: '/spec/forProvider/values/primary/replicaCount',
+          value: 1,
+        });
+        patches.push({
+          op: 'remove',
+          path: '/metadata/annotations/app.porsche.com~1paused',
+        });
+        patches.push({
+          op: 'replace',
+          path: '/metadata/annotations/app.porsche.com~1resumed-at',
+          value: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Handle size updates
     if (updates.size) {
+      console.log(`[Environment] Updating size for ${id}: ${existing.size} → ${updates.size}`);
+      
       const resourceSizes: Record<string, { memory: string; cpu: string; limits: { memory: string; cpu: string } }> = {
         small: { memory: '256Mi', cpu: '100m', limits: { memory: '512Mi', cpu: '500m' } },
         medium: { memory: '512Mi', cpu: '200m', limits: { memory: '1Gi', cpu: '1000m' } },
@@ -292,45 +378,78 @@ export async function updateEnvironment(
 
       const resources = resourceSizes[updates.size];
 
-      const patch = [
-        {
-          op: 'replace',
-          path: '/metadata/labels/app.porsche.com~1size',
-          value: updates.size,
-        },
-        {
-          op: 'replace',
-          path: '/spec/forProvider/values/primary/resources',
-          value: {
-            requests: {
-              memory: resources.memory,
-              cpu: resources.cpu,
-            },
-            limits: {
-              memory: resources.limits.memory,
-              cpu: resources.limits.cpu,
-            },
+      patches.push({
+        op: 'replace',
+        path: '/metadata/labels/app.porsche.com~1size',
+        value: updates.size,
+      });
+      patches.push({
+        op: 'replace',
+        path: '/spec/forProvider/values/primary/resources',
+        value: {
+          requests: {
+            memory: resources.memory,
+            cpu: resources.cpu,
+          },
+          limits: {
+            memory: resources.limits.memory,
+            cpu: resources.limits.cpu,
           },
         },
-      ];
+      });
+    }
 
+    // Apply patches if any
+    if (patches.length > 0) {
       await k8sCustomApi.patchClusterCustomObject(
         config.helmReleaseGroup,
         config.helmReleaseVersion,
         config.helmReleasePlural,
         id,
-        patch,
+        patches,
         undefined,
         undefined,
         undefined,
         { headers: { 'Content-Type': 'application/json-patch+json' } }
       );
+      
+      console.log(`[Environment] Successfully applied ${patches.length} patch(es) to ${id}`);
+      
+      // Wait for Kubernetes to process the patch (especially for status changes)
+      if (updates.status) {
+        const targetStatus = updates.status;
+        let consecutiveMatches = 0;
+        const requiredMatches = 2; // Need 2 consecutive matches to confirm
+        let retries = 0;
+        const maxRetries = 8;
+        
+        // Poll until status is stable (multiple consecutive matches)
+        while (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 400));
+          const current = await getEnvironment(id);
+          
+          if (current && current.status === targetStatus) {
+            consecutiveMatches++;
+            if (consecutiveMatches >= requiredMatches) {
+              console.log(`[Environment] Status confirmed as ${targetStatus} after ${retries + 1} attempts`);
+              return current;
+            }
+          } else {
+            consecutiveMatches = 0; // Reset if status doesn't match
+          }
+          
+          retries++;
+        }
+        
+        console.log(`[Environment] Status change timeout, returning current state`);
+      }
     }
 
     // Return updated environment
     return await getEnvironment(id);
   } catch (error) {
-    console.error(`Error updating environment ${id}:`, error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error updating environment ${id}:`, message);
     throw error;
   }
 }
@@ -347,11 +466,12 @@ export async function deleteEnvironment(id: string): Promise<boolean> {
       id
     );
     return true;
-  } catch (error: any) {
-    if (error.statusCode === 404) {
+  } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
       return false;
     }
-    console.error(`Error deleting environment ${id}:`, error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error deleting environment ${id}:`, message);
     throw error;
   }
 }

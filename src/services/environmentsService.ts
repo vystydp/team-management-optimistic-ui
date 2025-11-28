@@ -23,6 +23,7 @@ export interface CreateEnvironmentRequest {
 
 export interface UpdateEnvironmentRequest {
   size?: 'small' | 'medium' | 'large' | 'xlarge';
+  status?: 'READY' | 'PAUSED';
 }
 
 export interface EnvironmentListResponse {
@@ -157,16 +158,12 @@ export async function deleteEnvironment(id: string): Promise<void> {
  * Pause an environment (scale to zero)
  */
 export async function pauseEnvironment(id: string): Promise<TeamEnvironment> {
-  // For Phase 2, pause is simulated via size change to 'small' or custom logic
-  // In Phase 5, this would be a dedicated endpoint
-  return updateEnvironment(id, { size: 'small' });
+  return updateEnvironment(id, { status: 'PAUSED' });
 }
 
 /**
  * Resume a paused environment
  */
 export async function resumeEnvironment(id: string): Promise<TeamEnvironment> {
-  // For Phase 2, resume is simulated via size change
-  // In Phase 5, this would be a dedicated endpoint
-  return updateEnvironment(id, { size: 'medium' });
+  return updateEnvironment(id, { status: 'READY' });
 }

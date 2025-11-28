@@ -1,11 +1,15 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ResponsiveLayout, NavigationTab } from './components/layout/ResponsiveLayout';
 import { TeamsPage } from './pages/Teams/TeamsPage';
 import { EnvironmentsPage } from './pages/Environments/EnvironmentsPage';
 import { AwsAccountsPage } from './pages/AwsAccounts/AwsAccountsPage';
+import { LoginPage } from './pages/Auth/LoginPage';
+import { AuthCallbackPage } from './pages/Auth/AuthCallbackPage';
 import { PorscheIcon } from './components/shared/PorscheIcon';
+import { useAuthStore } from './stores/authStore';
 
-function App() {
+function AuthenticatedApp() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('environments');
 
   const renderControlPlanePage = () => (
@@ -53,6 +57,42 @@ function App() {
     <ResponsiveLayout currentTab={currentTab} onTabChange={setCurrentTab}>
       {renderCurrentPage()}
     </ResponsiveLayout>
+  );
+}
+
+function App() {
+  const { isAuthenticated, loading, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    // Check authentication on mount
+    checkAuth();
+  }, [checkAuth]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-porsche-gray-100 to-porsche-gray-200 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-porsche-gray-900 mx-auto mb-4"></div>
+          <p className="text-porsche-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        
+        {/* Protected routes */}
+        <Route
+          path="/*"
+          element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

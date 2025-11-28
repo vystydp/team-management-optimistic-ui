@@ -138,7 +138,14 @@ export function useOptimisticMutation<TData, TVariables>(
 /**
  * Hook for tracking optimistic update confidence
  */
-export function useOptimisticConfidence(initialConfidence: number = 0.95) {
+export function useOptimisticConfidence(initialConfidence: number = 0.95): {
+  confidence: number;
+  recordSuccess: () => void;
+  recordFailure: () => void;
+  shouldShowOptimistic: () => boolean;
+  errorProbability: number;
+  successRate: number;
+} {
   const [confidence, setConfidence] = useState(initialConfidence);
   const [successCount, setSuccessCount] = useState(0);
   const [failureCount, setFailureCount] = useState(0);
@@ -159,11 +166,16 @@ export function useOptimisticConfidence(initialConfidence: number = 0.95) {
     return 1 - confidence;
   }, [confidence]);
 
+  const shouldShowOptimistic = useCallback(() => {
+    return confidence > 0.7;
+  }, [confidence]);
+
   return {
     confidence,
     errorProbability: getErrorProbability(),
     successRate: successCount / (successCount + failureCount || 1),
     recordSuccess,
     recordFailure,
+    shouldShowOptimistic,
   };
 }
