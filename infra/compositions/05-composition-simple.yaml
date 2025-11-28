@@ -1,0 +1,38 @@
+---
+# Simplified Composition for GuardrailedAccount (MVP)
+# This creates a minimal ConfigMap to track guardrail status
+# Compatible with Crossplane v1 API without additional functions
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: guardrailed-account-simple
+  labels:
+    provider: aws
+    type: guardrailed-account
+spec:
+  compositeTypeRef:
+    apiVersion: platform.porsche.com/v1alpha1
+    kind: XGuardrailedAccount
+  
+  resources:
+    # Status tracking ConfigMap
+    - name: status-tracker
+      base:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: guardrail-status
+          namespace: team-environments
+        data:
+          accountId: ""
+          status: "applied"
+      patches:
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.accountId
+        toFieldPath: data.accountId
+      - type: FromCompositeFieldPath
+        fromFieldPath: spec.accountName
+        toFieldPath: data.accountName
+      - type: ToCompositeFieldPath
+        fromFieldPath: data.status
+        toFieldPath: status.guardrailsApplied

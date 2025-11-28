@@ -1,16 +1,42 @@
 ﻿import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ResponsiveLayout, NavigationTab } from './components/layout/ResponsiveLayout';
 import { TeamsPage } from './pages/Teams/TeamsPage';
 import { EnvironmentsPage } from './pages/Environments/EnvironmentsPage';
-import { AwsAccountsPage } from './pages/AwsAccounts/AwsAccountsPage';
+import { AwsAccountsRouter } from './pages/AwsAccounts/AwsAccountsRouter';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { AuthCallbackPage } from './pages/Auth/AuthCallbackPage';
 import { PorscheIcon } from './components/shared/PorscheIcon';
 import { useAuthStore } from './stores/authStore';
 
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5000,
+    },
+  },
+});
+
 function AuthenticatedApp() {
-  const [currentTab, setCurrentTab] = useState<NavigationTab>('environments');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [currentTab, setCurrentTab] = useState<NavigationTab>(() => {
+    if (location.pathname.startsWith('/aws-accounts')) return 'aws-accounts';
+    if (location.pathname.startsWith('/environments')) return 'environments';
+    if (location.pathname.startsWith('/teams')) return 'teams';
+    if (location.pathname.startsWith('/control-plane')) return 'control-plane';
+    return 'teams';
+  });
+
+  const handleTabChange = (tab: NavigationTab) => {
+    setCurrentTab(tab);
+    // Navigate to the base route for each tab
+    navigate(`/${tab}`);
+  };
 
   const renderControlPlanePage = () => (
     <div className="space-y-fluid-lg">
@@ -45,7 +71,7 @@ function AuthenticatedApp() {
       case 'environments':
         return <EnvironmentsPage />;
       case 'aws-accounts':
-        return <AwsAccountsPage />;
+        return <AwsAccountsRouter />;
       case 'control-plane':
         return renderControlPlanePage();
       default:
@@ -53,8 +79,16 @@ function AuthenticatedApp() {
     }
   };
 
+  useEffect(() => {
+    // Sync tab with route
+    if (location.pathname.startsWith('/aws-accounts')) setCurrentTab('aws-accounts');
+    else if (location.pathname.startsWith('/environments')) setCurrentTab('environments');
+    else if (location.pathname.startsWith('/teams')) setCurrentTab('teams');
+    else if (location.pathname.startsWith('/control-plane')) setCurrentTab('control-plane');
+  }, [location.pathname]);
+
   return (
-    <ResponsiveLayout currentTab={currentTab} onTabChange={setCurrentTab}>
+    <ResponsiveLayout currentTab={currentTab} onTabChange={handleTabChange}>
       {renderCurrentPage()}
     </ResponsiveLayout>
   );
@@ -80,19 +114,37 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        
-        {/* Protected routes */}
-        <Route
-          path="/*"
-          element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
-        />
-      </Routes>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          
+          {/* Protected routes */}
+          <Route
+            path="/teams"
+            element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/environments/*"
+            element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/aws-accounts/*"
+            element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/control-plane"
+            element={isAuthenticated ? <AuthenticatedApp /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/"
+            element={isAuthenticated ? <Navigate to="/teams" replace /> : <Navigate to="/login" replace />}
+          />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
