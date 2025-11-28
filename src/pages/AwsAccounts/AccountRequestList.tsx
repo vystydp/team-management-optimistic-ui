@@ -59,16 +59,34 @@ export const AccountRequestList: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            AWS Account Requests
-          </h1>
-          <p className="text-gray-600">
-            Create and track requests for new AWS accounts with automated guardrails
-          </p>
+      {/* Mini KPIs + CTA */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex gap-8">
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Total</div>
+            <div className="text-2xl font-bold text-gray-900">{requests.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-blue-600 uppercase tracking-wide font-semibold">In Progress</div>
+            <div className="text-2xl font-bold text-blue-600">{activeRequests.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-green-600 uppercase tracking-wide font-semibold">Completed</div>
+            <div className="text-2xl font-bold text-green-600">
+              {completedRequests.filter((r: AccountRequest) => r.status === 'READY').length}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-red-600 uppercase tracking-wide font-semibold">Failed</div>
+            <div className="text-2xl font-bold text-red-600">
+              {completedRequests.filter((r: AccountRequest) => r.status === 'FAILED').length}
+            </div>
+          </div>
         </div>
         <ActionButton variant="primary" onPress={handleCreateNew}>
+          <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           Request New Account
         </ActionButton>
       </div>

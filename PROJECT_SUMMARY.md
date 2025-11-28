@@ -476,43 +476,6 @@ This isn't just a demo or tutorial project. It's a **production-ready, enterpris
 
 ---
 
-## 🆕 Latest Updates - Phase 4: AWS Account Creation (Nov 2025)
-
-### **AWS Account Request Wizard** ✨
-A complete self-service workflow for requesting new AWS accounts with automated guardrails:
-
-**Features Implemented:**
-- ✅ 3-step wizard (Introduction → Form → Review)
-- ✅ Backend API with authentication (JWT)
-- ✅ React Query integration with optimistic UI
-- ✅ Real-time status polling (REQUESTED → VALIDATING → PROVISIONING → READY)
-- ✅ Account request list with active/completed sections
-- ✅ Detailed progress tracking with timeline
-- ✅ Instant UI updates on form submission
-
-**Backend (113/113 tests passing):**
-- Account request CRUD operations
-- Status transition workflow simulation
-- User authentication & authorization
-- Request validation & error handling
-
-**Frontend:**
-- Multi-step wizard with form validation
-- Optimistic cache updates for instant feedback
-- Automatic rollback on errors
-- Live status updates every 3 seconds
-- Responsive design with Tailwind CSS
-
-**Tech Stack:**
-- React Query for server state
-- Zustand for wizard state
-- TypeScript for type safety
-- Express backend with JWT auth
-
-Try it: Navigate to `/aws-accounts/requests` and click "Request New Account"
-
----
-
 **Built with ❤️ following industry best practices and modern web development standards.**
 
 **Happy Coding! 🚀**
