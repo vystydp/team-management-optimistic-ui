@@ -4,9 +4,15 @@ import { PageHeader } from '../../components/shared/PageHeader';
 import { ActionButton } from '../../components/shared/ActionButton';
 import { useEnvironmentStore } from '../../stores/environmentStore';
 import { EnvironmentForm } from './EnvironmentForm';
-import { TeamEnvironmentStatus } from '../../types/aws';
+import { ScaleEnvironmentDialog } from './ScaleEnvironmentDialog';
+import { CloneEnvironmentDialog } from './CloneEnvironmentDialog';
+import { TeamEnvironmentStatus, TeamEnvironment } from '../../types/aws';
 import * as environmentsService from '../../services/environmentsService';
 import { useEnvironmentsPolling } from '../../hooks/useEnvironmentPolling';
+import { PageContainer } from '../../components/layout/PageContainer';
+import { PageHero } from '../../components/layout/PageHero';
+import { KpiRow } from '../../components/layout/KpiRow';
+import { useToast } from '../../stores/toastStore';
 
 const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
 
@@ -17,7 +23,10 @@ const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
  */
 export const EnvironmentsPage = () => {
   const [showForm, setShowForm] = useState(false);
+  const [scaleEnvironment, setScaleEnvironment] = useState<TeamEnvironment | null>(null);
+  const [cloneEnvironment, setCloneEnvironment] = useState<TeamEnvironment | null>(null);
   const { environments, templates, setEnvironments, setTemplates } = useEnvironmentStore();
+  const { showSuccess, showError } = useToast();
 
   // Load templates and environments on mount
   useEffect(() => {
@@ -191,6 +200,7 @@ export const EnvironmentsPage = () => {
     const updateId = addEnvironmentOptimistic(optimisticEnv);
 
     setShowForm(false);
+    showSuccess('Environment creation started', `${data.name} is being provisioned`);
 
     // Real API call (Phase 2.8)
     try {
@@ -219,12 +229,13 @@ export const EnvironmentsPage = () => {
           updatedAt: new Date(),
         };
         commitOptimistic(updateId, finalEnv);
+        showSuccess('Environment created successfully', `${data.name} is now ready`);
       }
     } catch (error) {
       // Error - rollback the optimistic update
       rollbackOptimistic(updateId);
       console.error('Failed to create environment:', error);
-      // TODO: Show React Aria alert for error
+      showError('Failed to create environment', error instanceof Error ? error.message : 'Unknown error occurred');
     }
   };
 
@@ -282,20 +293,24 @@ export const EnvironmentsPage = () => {
 
     const updatedEnv = { ...env, status: 'PAUSING' as const, updatedAt: new Date() };
     const updateId = updateEnvironmentOptimistic(envId, updatedEnv, env);
+    showSuccess('Pausing environment', `${env.name} is being paused`);
 
     try {
       if (USE_REAL_BACKEND) {
         // Phase 2: Simulate pause by reducing size
         const pausedEnv = await environmentsService.pauseEnvironment(envId);
         commitOptimistic(updateId, { ...pausedEnv, status: 'PAUSED' as const });
+        showSuccess('Environment paused', `${env.name} is now paused`);
       } else {
         await new Promise(resolve => setTimeout(resolve, 1500));
         const finalEnv = { ...updatedEnv, status: 'PAUSED' as const, updatedAt: new Date() };
         commitOptimistic(updateId, finalEnv);
+        showSuccess('Environment paused', `${env.name} is now paused`);
       }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to pause environment:', error);
+      showError('Failed to pause environment', error instanceof Error ? error.message : 'Unknown error occurred');
     }
   };
 
@@ -307,20 +322,128 @@ export const EnvironmentsPage = () => {
 
     const updatedEnv = { ...env, status: 'RESUMING' as const, updatedAt: new Date() };
     const updateId = updateEnvironmentOptimistic(envId, updatedEnv, env);
+    showSuccess('Resuming environment', `${env.name} is being resumed`);
 
     try {
       if (USE_REAL_BACKEND) {
         // Phase 2: Resume by restoring size
         const resumedEnv = await environmentsService.resumeEnvironment(envId);
         commitOptimistic(updateId, resumedEnv);
+        showSuccess('Environment resumed', `${env.name} is now ready`);
       } else {
         await new Promise(resolve => setTimeout(resolve, 1500));
         const finalEnv = { ...updatedEnv, status: 'READY' as const, updatedAt: new Date() };
         commitOptimistic(updateId, finalEnv);
+        showSuccess('Environment resumed', `${env.name} is now ready`);
       }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to resume environment:', error);
+      showError('Failed to resume environment', error instanceof Error ? error.message : 'Unknown error occurred');
+    }
+  };
+  const handleScaleEnvironment = async (envId: string, newSize: string) => {
+    const { updateEnvironmentOptimistic, commitOptimistic, rollbackOptimistic } = useEnvironmentStore.getState();
+    const env = environments.find(e => e.id === envId);
+    
+    if (!env) return;
+
+    const updatedEnv: TeamEnvironment = {
+      ...env,
+      status: 'UPDATING',
+      parameters: {
+        ...env.parameters,
+        size: newSize as any,
+      },
+      updatedAt: new Date()
+    };
+    
+    const updateId = updateEnvironmentOptimistic(envId, updatedEnv, env);
+    setScaleEnvironment(null);
+    showSuccess('Scaling environment', `${env.name} is being scaled to ${newSize}`);
+
+    try {
+      if (USE_REAL_BACKEND) {
+        const scaledEnv = await environmentsService.updateEnvironment(envId, {
+          size: newSize as any,
+        });
+        commitOptimistic(updateId, scaledEnv);
+        showSuccess('Environment scaled', `${env.name} is now ${newSize}`);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const finalEnv: TeamEnvironment = { ...updatedEnv, status: 'READY', updatedAt: new Date() };
+        commitOptimistic(updateId, finalEnv);
+        showSuccess('Environment scaled', `${env.name} is now ${newSize}`);
+      }
+    } catch (error) {
+      rollbackOptimistic(updateId);
+      console.error('Failed to scale environment:', error);
+      showError('Failed to scale environment', error instanceof Error ? error.message : 'Unknown error occurred');
+    }
+  };
+
+  const handleCloneEnvironment = async (
+    sourceEnvId: string,
+    newName: string,
+    customizations: { size?: string; region?: string; ttlDays?: number }
+  ) => {
+    const sourceEnv = environments.find(e => e.id === sourceEnvId);
+    
+    if (!sourceEnv) return;
+
+    // Create cloned environment with customizations
+    const clonedEnv: TeamEnvironment = {
+      id: `env-${Date.now()}`,
+      name: newName,
+      teamId: sourceEnv.teamId,
+      templateId: sourceEnv.templateId,
+      template: sourceEnv.template,
+      awsAccountId: sourceEnv.awsAccountId,
+      awsAccount: sourceEnv.awsAccount,
+      parameters: {
+        ...sourceEnv.parameters,
+        size: (customizations.size || sourceEnv.parameters?.size) as any,
+        region: customizations.region || sourceEnv.parameters?.region || 'us-east-1',
+        ttl: customizations.ttlDays
+          ? new Date(Date.now() + customizations.ttlDays * 24 * 60 * 60 * 1000)
+          : sourceEnv.parameters?.ttl,
+      },
+      status: 'CREATING',
+      resourcesProvisioned: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: sourceEnv.createdBy,
+    };
+
+    const { addEnvironmentOptimistic, commitOptimistic, rollbackOptimistic } = useEnvironmentStore.getState();
+    const updateId = addEnvironmentOptimistic(clonedEnv);
+
+    setCloneEnvironment(null);
+    showSuccess('Cloning environment', `Creating ${newName} from ${sourceEnv.name}`);
+
+    try {
+      if (USE_REAL_BACKEND) {
+        // In real backend, we'd call a clone endpoint
+        // For now, treat it like creating a new environment with same template
+        const newEnv = await environmentsService.createEnvironment({
+          name: newName,
+          teamId: sourceEnv.teamId,
+          templateType: sourceEnv.template?.type as any || 'development',
+          size: (customizations.size || sourceEnv.parameters?.size) as any || 'medium',
+          ttlDays: customizations.ttlDays,
+        });
+        commitOptimistic(updateId, newEnv);
+        showSuccess('Environment cloned', `${newName} created successfully`);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const finalEnv: TeamEnvironment = { ...clonedEnv, status: 'READY', updatedAt: new Date() };
+        commitOptimistic(updateId, finalEnv);
+        showSuccess('Environment cloned', `${newName} created successfully`);
+      }
+    } catch (error) {
+      rollbackOptimistic(updateId);
+      console.error('Failed to clone environment:', error);
+      showError('Failed to clone environment', error instanceof Error ? error.message : 'Unknown error occurred');
     }
   };
 
@@ -332,46 +455,47 @@ export const EnvironmentsPage = () => {
 
     // Delete optimistically
     const updateId = deleteEnvironmentOptimistic(envId, env);
+    showSuccess('Deleting environment', `${env.name} is being deleted`);
+    showSuccess('Deleting environment', `${env.name} is being deleted`);
 
     try {
       if (USE_REAL_BACKEND) {
         // Call real backend delete
         await environmentsService.deleteEnvironment(envId);
         commitOptimistic(updateId);
+        showSuccess('Environment deleted', `${env.name} has been removed`);
       } else {
         await new Promise(resolve => setTimeout(resolve, 2000));
         commitOptimistic(updateId);
+        showSuccess('Environment deleted', `${env.name} has been removed`);
       }
     } catch (error) {
       rollbackOptimistic(updateId);
       console.error('Failed to delete environment:', error);
+      showError('Failed to delete environment', error instanceof Error ? error.message : 'Unknown error occurred');
     }
   };
 
+  const addIcon = (
+    <PorscheIcon name="add" size={16} className="text-white" />
+  );
+
   return (
-    <div className="space-y-fluid-lg">
-      <PageHeader breadcrumb="Platform Operations · Environments View" />
+    <PageContainer>
+      <div className="space-y-fluid-lg">
+        <PageHeader breadcrumb="Platform Operations · Environments View" />
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-fluid-sm">
-        <div>
-          <h2 className="text-heading-lg font-bold text-porsche-neutral-800 font-porsche tracking-tight">
-            Environments
-          </h2>
-          <p className="mt-2 text-sm text-porsche-neutral-600 font-porsche">
-            Manage team environments across AWS accounts
-          </p>
-        </div>
-        <ActionButton
-          variant="primary"
-          onClick={() => setShowForm(true)}
-        >
-          <PorscheIcon name="add" size={16} className="text-white" />
-          <span className="ml-2">Create Environment</span>
-        </ActionButton>
-      </div>
+        <PageHero
+          title="Environments"
+          subtitle="Manage team environments across AWS accounts"
+          primaryAction={{
+            label: 'Create Environment',
+            icon: addIcon,
+            onPress: () => setShowForm(true)
+          }}
+        />
 
-      {/* Environment Form Dialog */}
+      {/* Create Environment Form Dialog */}
       {showForm && (
         <EnvironmentForm
           templates={templates}
@@ -381,50 +505,45 @@ export const EnvironmentsPage = () => {
         />
       )}
 
-      {/* Environment Health Monitor - Hero Section */}
-      <div className="bg-white/90 backdrop-blur-porsche-sm rounded-porsche-lg p-fluid-md border border-porsche-silver shadow-porsche-md">
-        <div className="flex items-center justify-between mb-fluid-sm">
-          <div>
-            <h2 className="text-heading-md font-bold text-porsche-neutral-800 font-porsche tracking-tight">
-              Environment Health Monitor
-            </h2>
-            <p className="text-sm text-porsche-neutral-600 font-porsche mt-1">
-              Real-time environment status across all AWS accounts
-            </p>
-          </div>
-        </div>
+      {/* Scale Environment Dialog */}
+      {scaleEnvironment && (
+        <ScaleEnvironmentDialog
+          environment={scaleEnvironment}
+          onSubmit={handleScaleEnvironment}
+          onCancel={() => setScaleEnvironment(null)}
+        />
+      )}
 
-        {/* Three Key Metrics - Dense Instrument Gauges */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-fluid-sm">
-          {/* Total Environments */}
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs font-semibold text-porsche-neutral-600 uppercase tracking-wide font-porsche mb-1">
-              Total Environments
-            </div>
-            <div className="text-4xl font-bold text-porsche-neutral-800 font-porsche">{environments?.length ?? 0}</div>
-          </div>
+      {/* Clone Environment Dialog */}
+      {cloneEnvironment && (
+        <CloneEnvironmentDialog
+          environment={cloneEnvironment}
+          onSubmit={handleCloneEnvironment}
+          onCancel={() => setCloneEnvironment(null)}
+        />
+      )}
 
-          {/* Ready - PRIMARY with Visual Anchor */}
-          <div className="bg-porsche-success-bg rounded-porsche p-fluid-sm border-2 border-porsche-success shadow-porsche-sm">
-            <div className="text-xs font-semibold text-porsche-success uppercase tracking-wide font-porsche mb-1 flex items-center gap-2">
-              <PorscheIcon name="success" size={12} className="text-porsche-success" />
-              Ready
-            </div>
-            <div className="text-4xl font-bold text-porsche-success font-porsche">{readyCount}</div>
-            <div className="mt-2 text-xs text-porsche-neutral-600 font-porsche">
-              {(environments?.length ?? 0) > 0 ? `${Math.round((readyCount / (environments?.length ?? 1)) * 100)}%` : '0%'} healthy
-            </div>
-          </div>
-
-          {/* Creating/Paused - Flat Card */}
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs font-semibold text-porsche-neutral-600 uppercase tracking-wide font-porsche mb-1">
-              Creating / Paused
-            </div>
-            <div className="text-4xl font-bold text-porsche-warning font-porsche">{creatingCount} / {pausedCount}</div>
-          </div>
-        </div>
-      </div>
+        <KpiRow
+          tiles={[
+            {
+              label: 'Total Environments',
+              value: environments?.length ?? 0,
+              color: 'gray',
+            },
+            {
+              label: 'Ready',
+              value: readyCount,
+              color: 'green',
+              sublabel: (environments?.length ?? 0) > 0 ? `${Math.round((readyCount / (environments?.length ?? 1)) * 100)}% healthy` : '0% healthy',
+              icon: <PorscheIcon name="success" size={16} className="text-green-600" />,
+            },
+            {
+              label: 'Creating / Paused',
+              value: `${creatingCount} / ${pausedCount}`,
+              color: 'blue',
+            },
+          ]}
+        />
 
       {/* Crossplane Health Strip */}
       <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm flex items-center justify-between">
@@ -470,10 +589,10 @@ export const EnvironmentsPage = () => {
         </div>
       ) : (
         /* Environment List - Responsive: Mobile Cards, Desktop Table */
-        <div className="bg-white/90 backdrop-blur-porsche-sm shadow-porsche-md rounded-porsche-lg border border-porsche-silver overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-porsche-sm shadow-porsche-md rounded-porsche-lg border border-porsche-silver">
           {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="min-w-full divide-y divide-porsche-silver">
+          <div className="hidden xl:block overflow-x-auto">
+            <table className="w-full divide-y divide-porsche-silver">
               <thead className="bg-porsche-neutral-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-porsche-neutral-700 uppercase tracking-wider font-porsche">
@@ -521,6 +640,16 @@ export const EnvironmentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
+                        {(env.status === 'READY' || env.status === 'PAUSED') && (
+                          <>
+                            <ActionButton variant="secondary" onClick={() => setScaleEnvironment(env)}>
+                              <PorscheIcon name="arrows" size={14} />
+                            </ActionButton>
+                            <ActionButton variant="secondary" onClick={() => setCloneEnvironment(env)}>
+                              <PorscheIcon name="copy" size={14} />
+                            </ActionButton>
+                          </>
+                        )}
                         {env.status === 'READY' && (
                           <ActionButton variant="secondary" onClick={() => handlePauseEnvironment(env.id)}>
                             <PorscheIcon name="pause" size={14} />
@@ -543,7 +672,7 @@ export const EnvironmentsPage = () => {
           </div>
 
           {/* Mobile Card View */}
-          <div className="lg:hidden divide-y divide-porsche-silver">
+          <div className="xl:hidden divide-y divide-porsche-silver">
             {environments?.map((env) => (
               <div key={env.id} className="p-fluid-md hover:bg-porsche-neutral-50 transition-colors">
                 <div className="flex items-start justify-between mb-3">
@@ -576,7 +705,19 @@ export const EnvironmentsPage = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {(env.status === 'READY' || env.status === 'PAUSED') && (
+                    <>
+                      <ActionButton variant="secondary" onClick={() => setScaleEnvironment(env)}>
+                        <PorscheIcon name="arrows" size={14} />
+                        <span className="ml-1">Scale</span>
+                      </ActionButton>
+                      <ActionButton variant="secondary" onClick={() => setCloneEnvironment(env)}>
+                        <PorscheIcon name="copy" size={14} />
+                        <span className="ml-1">Clone</span>
+                      </ActionButton>
+                    </>
+                  )}
                   {env.status === 'READY' && (
                     <ActionButton variant="secondary" onClick={() => handlePauseEnvironment(env.id)}>
                       <PorscheIcon name="pause" size={14} />
@@ -628,6 +769,7 @@ export const EnvironmentsPage = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageContainer>
   );
 };

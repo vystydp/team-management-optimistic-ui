@@ -11,6 +11,7 @@ import type {
   JsonPatchOperation,
 } from './types/kubernetes';
 import { isK8sListResponse } from './types/kubernetes';
+import { activityService } from './services/activity.service';
 
 /**
  * Maps Helm Release status to TeamEnvironment status
@@ -297,6 +298,23 @@ export async function createEnvironment(
       cacheReady: false,
       apiReady: false,
     };
+    
+    // Log activity event
+    activityService.logEvent({
+      type: 'environment.created',
+      resourceType: 'environment',
+      resourceId: id,
+      resourceName: req.name,
+      actor: { id: 'user-1', name: 'System User' },
+      action: `Created environment ${req.name}`,
+      metadata: {
+        templateType: req.templateType,
+        size,
+        enableDatabase,
+        enableCache,
+      },
+    });
+    
   } catch (error) {
     console.error('❌ Error creating environment:', error);
     if (error && typeof error === 'object') {
@@ -415,6 +433,39 @@ export async function updateEnvironment(
       
       console.log(`[Environment] Successfully applied ${patches.length} patch(es) to ${id}`);
       
+      // Log activity event
+      if (updates.status === 'PAUSED') {
+        activityService.logEvent({
+          type: 'environment.paused',
+          resourceType: 'environment',
+          resourceId: id,
+          resourceName: existing.name,
+          actor: { id: 'user-1', name: 'System User' },
+          action: `Paused environment ${existing.name}`,
+        });
+      } else if (updates.status === 'READY' && existing.status === 'PAUSED') {
+        activityService.logEvent({
+          type: 'environment.resumed',
+          resourceType: 'environment',
+          resourceId: id,
+          resourceName: existing.name,
+          actor: { id: 'user-1', name: 'System User' },
+          action: `Resumed environment ${existing.name}`,
+        });
+      }
+      
+      if (updates.size && existing.size) {
+        activityService.logEvent({
+          type: 'environment.scaled',
+          resourceType: 'environment',
+          resourceId: id,
+          resourceName: existing.name,
+          actor: { id: 'user-1', name: 'System User' },
+          action: `Scaled environment ${existing.name} from ${existing.size} to ${updates.size}`,
+          changes: [{ field: 'size', oldValue: existing.size, newValue: updates.size }],
+        });
+      }
+      
       // Wait for Kubernetes to process the patch (especially for status changes)
       if (updates.status) {
         const targetStatus = updates.status;
@@ -459,12 +510,27 @@ export async function updateEnvironment(
  */
 export async function deleteEnvironment(id: string): Promise<boolean> {
   try {
+    // Get environment name before deleting
+    const env = await getEnvironment(id);
+    const envName = env?.name || id;
+    
     await k8sCustomApi.deleteClusterCustomObject(
       config.helmReleaseGroup,
       config.helmReleaseVersion,
       config.helmReleasePlural,
       id
     );
+    
+    // Log activity event
+    activityService.logEvent({
+      type: 'environment.deleted',
+      resourceType: 'environment',
+      resourceId: id,
+      resourceName: envName,
+      actor: { id: 'user-1', name: 'System User' },
+      action: `Deleted environment ${envName}`,
+    });
+    
     return true;
   } catch (error) {
     if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {

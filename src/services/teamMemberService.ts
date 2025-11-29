@@ -14,13 +14,24 @@ export class TeamMemberService {
    * Fetches all team members
    */
   async getAll(): Promise<TeamMember[]> {
-    const response = await fetch(`${this.baseUrl}/team-members`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch team members: ${response.statusText}`);
-    }
+    try {
+      const response = await fetch(`${this.baseUrl}/team-members`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team members: ${response.statusText}`);
+      }
 
-    return response.json();
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Failed to fetch team members from backend:', error);
+      // Return empty array when backend is unavailable
+      return [];
+    }
   }
 
   /**
