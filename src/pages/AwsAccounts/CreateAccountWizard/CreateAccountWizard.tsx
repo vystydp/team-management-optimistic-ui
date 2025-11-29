@@ -8,10 +8,12 @@ import { WizardForm } from './WizardForm';
 import { WizardReview } from './WizardReview';
 import { StepProgress } from '../../../components/shared/StepProgress';
 import type { CreateAccountRequestInput, AccountRequest } from '../../../types/account-request';
+import { useToast } from '../../../stores/toastStore';
 
 export const CreateAccountWizard: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { showSuccess, showError } = useToast();
   
   // UI state from Zustand
   const { currentStep, formData, setStep, updateFormData, resetWizard } = useAccountRequestWizardStore();
@@ -41,8 +43,8 @@ export const CreateAccountWizard: React.FC = () => {
         budgetAmountUSD: input.budgetAmountUSD,
         budgetThresholdPercent: input.budgetThresholdPercent,
         allowedRegions: input.allowedRegions,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       queryClient.setQueryData(['accountRequests'], (old: any) => ({
@@ -54,10 +56,14 @@ export const CreateAccountWizard: React.FC = () => {
     },
     
     // On error: rollback to previous state
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousRequests) {
         queryClient.setQueryData(['accountRequests'], context.previousRequests);
       }
+      showError(
+        'Failed to submit account request',
+        err instanceof Error ? err.message : 'Please try again later'
+      );
     },
     
     // On success: replace temp with real data
@@ -71,11 +77,20 @@ export const CreateAccountWizard: React.FC = () => {
         total: old?.total || 1,
       }));
       
+      showSuccess(
+        'Account request submitted successfully',
+        'Your request is being processed',
+        {
+          label: 'View Request',
+          onClick: () => navigate(`/aws-accounts/${newRequest.id}`)
+        }
+      );
+      
       // Reset wizard state
       resetWizard();
       
       // Navigate to detail page to show progress
-      navigate(`/aws-accounts/requests/${newRequest.id}`);
+      navigate(`/aws-accounts/${newRequest.id}`);
     },
   });
 
@@ -97,7 +112,7 @@ export const CreateAccountWizard: React.FC = () => {
 
   const handleCancel = () => {
     resetWizard();
-    navigate('/aws-accounts/requests');
+    navigate('/aws-accounts');
   };
 
   const handleSubmit = async () => {

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { accountRequestService } from '../../services/accountRequestService';
 import { ActionButton } from '../../components/shared/ActionButton';
+import { KpiRow } from '../../components/layout/KpiRow';
+import { FiltersBar } from '../../components/layout/FiltersBar';
 import { 
   getStatusLabel, 
   getStatusColor, 
@@ -14,6 +16,8 @@ import {
 
 export const AccountRequestList: React.FC = () => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const { data, isLoading, error } = useQuery<ListAccountRequestsResponse>({
     queryKey: ['accountRequests'],
@@ -28,11 +32,11 @@ export const AccountRequestList: React.FC = () => {
   });
 
   const handleCreateNew = () => {
-    navigate('/aws-accounts/requests/new');
+    navigate('/aws-accounts/new');
   };
 
   const handleViewDetails = (id: string) => {
-    navigate(`/aws-accounts/requests/${id}`);
+    navigate(`/aws-accounts/${id}`);
   };
 
   if (isLoading) {
@@ -57,39 +61,54 @@ export const AccountRequestList: React.FC = () => {
   const activeRequests = requests.filter((r: AccountRequest) => !isTerminalStatus(r.status));
   const completedRequests = requests.filter((r: AccountRequest) => isTerminalStatus(r.status));
 
+  // Calculate status counts
+  const readyCount = completedRequests.filter((r: AccountRequest) => r.status === 'READY').length;
+  const failedCount = completedRequests.filter((r: AccountRequest) => r.status === 'FAILED').length;
+
+  const plusIcon = (
+    <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    </svg>
+  );
+
   return (
     <div>
-      {/* Mini KPIs + CTA */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-8">
-          <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Total</div>
-            <div className="text-2xl font-bold text-gray-900">{requests.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-blue-600 uppercase tracking-wide font-semibold">In Progress</div>
-            <div className="text-2xl font-bold text-blue-600">{activeRequests.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-green-600 uppercase tracking-wide font-semibold">Completed</div>
-            <div className="text-2xl font-bold text-green-600">
-              {completedRequests.filter((r: AccountRequest) => r.status === 'READY').length}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-red-600 uppercase tracking-wide font-semibold">Failed</div>
-            <div className="text-2xl font-bold text-red-600">
-              {completedRequests.filter((r: AccountRequest) => r.status === 'FAILED').length}
-            </div>
-          </div>
-        </div>
-        <ActionButton variant="primary" onPress={handleCreateNew}>
-          <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Request New Account
-        </ActionButton>
-      </div>
+      {/* KPI Row */}
+      <KpiRow
+        tiles={[
+          { label: 'Total Requests', value: requests.length, color: 'gray' },
+          { label: 'In Progress', value: activeRequests.length, color: 'blue' },
+          { label: 'Completed', value: readyCount, color: 'green' },
+          { label: 'Failed', value: failedCount, color: 'red' },
+        ]}
+      />
+
+      {/* Filters + CTA Row */}
+      <FiltersBar
+        searchPlaceholder="Search by name or email..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={{
+          value: statusFilter,
+          onChange: setStatusFilter,
+          options: [
+            { value: '', label: 'All statuses' },
+            { value: 'REQUESTED', label: 'Requested' },
+            { value: 'VALIDATING', label: 'Validating' },
+            { value: 'PROVISIONING', label: 'Provisioning' },
+            { value: 'CONFIGURING', label: 'Configuring' },
+            { value: 'READY', label: 'Ready' },
+            { value: 'FAILED', label: 'Failed' },
+          ],
+        }}
+        primaryAction={{
+          label: 'Request New Account',
+          mobileLabel: 'New Request',
+          icon: plusIcon,
+          onPress: handleCreateNew,
+        }}
+        className="mb-4 sm:mb-6"
+      />
 
       {/* Active Requests */}
       {activeRequests.length > 0 && (
@@ -128,10 +147,10 @@ export const AccountRequestList: React.FC = () => {
       )}
 
       {requests.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <div className="text-gray-500 mb-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <div className="text-gray-400 mb-4">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-16 w-16"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -139,19 +158,22 @@ export const AccountRequestList: React.FC = () => {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No account requests yet
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            No Account Requests Yet
           </h3>
-          <p className="text-gray-500 mb-4">
-            Get started by creating your first AWS account request
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            Create your first AWS account with automated security guardrails and compliance controls
           </p>
           <ActionButton variant="primary" onPress={handleCreateNew}>
-            Request AWS Account
+            <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Request New AWS Account
           </ActionButton>
         </div>
       )}
@@ -176,16 +198,16 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onViewDetails }) => 
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">
             {request.accountName}
           </h3>
-          <p className="text-sm text-gray-500">{request.ownerEmail}</p>
+          <p className="text-xs sm:text-sm text-gray-500 truncate">{request.ownerEmail}</p>
         </div>
         <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+          className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border self-start ${
             colorClasses[statusColor] || colorClasses.blue
           }`}
         >
@@ -220,18 +242,18 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onViewDetails }) => 
         </div>
       )}
 
-      {/* Account Details */}
-      <div className="grid grid-cols-3 gap-4 text-sm mb-4">
+      {/* Account Details - Mobile: Stack, Tablet+: Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm mb-3 sm:mb-4">
         <div>
-          <div className="text-gray-500">Purpose</div>
+          <div className="text-gray-500 mb-0.5">Purpose</div>
           <div className="font-medium text-gray-900 capitalize">{request.purpose}</div>
         </div>
         <div>
-          <div className="text-gray-500">Region</div>
+          <div className="text-gray-500 mb-0.5">Region</div>
           <div className="font-medium text-gray-900">{request.primaryRegion}</div>
         </div>
-        <div>
-          <div className="text-gray-500">Created</div>
+        <div className="col-span-2 sm:col-span-1">
+          <div className="text-gray-500 mb-0.5">Created</div>
           <div className="font-medium text-gray-900">
             {new Date(request.createdAt).toLocaleDateString()}
           </div>
@@ -240,7 +262,8 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onViewDetails }) => 
 
       <div className="flex justify-end">
         <ActionButton variant="secondary" onPress={() => onViewDetails(request.id)}>
-          View Details
+          <span className="hidden sm:inline">View Details</span>
+          <span className="sm:hidden">View</span>
         </ActionButton>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { PorscheIcon } from '../shared/PorscheIcon';
 import { ICONS_MANIFEST } from '@porsche-design-system/assets';
 import { useAuthStore } from '../../stores/authStore';
 
-export type NavigationTab = 'teams' | 'environments' | 'aws-accounts' | 'control-plane';
+export type NavigationTab = 'teams' | 'environments' | 'aws-accounts' | 'control-plane' | 'activity';
 
 export interface ResponsiveLayoutProps {
   children: ReactNode;
@@ -24,6 +24,7 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
     { id: 'teams', label: 'Teams', icon: 'userGroup' },
     { id: 'environments', label: 'Environments', icon: 'globe' },
     { id: 'aws-accounts', label: 'AWS Accounts', icon: 'success' },
+    { id: 'activity', label: 'Activity', icon: 'clock' },
     { id: 'control-plane', label: 'Control Plane', icon: 'information' },
   ];
 
@@ -35,7 +36,7 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
   return (
     <div className="min-h-screen bg-porsche-canvas">
       {/* Mobile Navigation - Top Tabs (Console Theme) */}
-      <nav className="lg:hidden bg-white backdrop-blur-porsche-sm border-b-2 border-porsche-silver sticky top-0 z-10 shadow-porsche-sm">
+      <nav className="lg:hidden bg-white backdrop-blur-porsche-sm border-b-2 border-porsche-silver sticky top-0 z-10 shadow-porsche-sm overflow-x-auto">
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <h1 className="text-heading-sm font-bold text-porsche-neutral-800 font-porsche tracking-tight">
             CloudOps Platform
@@ -178,10 +179,8 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
         </aside>
 
         {/* Main Content Area */}
-        <main className="min-h-screen">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-fluid-lg">
-            {children}
-          </div>
+        <main className="min-h-screen py-fluid-lg">
+          {children}
         </main>
       </div>
     </div>

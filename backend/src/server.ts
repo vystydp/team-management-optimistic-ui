@@ -19,6 +19,7 @@ import type {
 import authRoutes from './routes/auth.routes';
 import awsAccountRoutes from './routes/aws-account.routes';
 import accountRequestRoutes from './routes/account-request.routes';
+import activityRoutes from './routes/activity.routes';
 import { requireAuth } from './middleware/auth.middleware';
 import { RealOrganizationsClient, MockOrganizationsClient } from './services/aws-organizations.client';
 import { startAccountWorker } from './services/account-worker';
@@ -65,6 +66,10 @@ app.use('/api/aws', requireAuth, awsAccountRoutes);
 
 // Account request routes (authentication handled in router)
 app.use('/api/aws/account-requests', accountRequestRoutes);
+
+// Activity feed routes
+app.use('/api/activity', activityRoutes);
+
 // GET /api/environments - List all environments
 app.get('/api/environments', async (req: Request, res: Response) => {
   try {

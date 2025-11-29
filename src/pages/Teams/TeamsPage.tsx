@@ -9,6 +9,11 @@ import { OptimisticUIMonitor } from './OptimisticUIMonitor';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { ActionButton } from '../../components/shared/ActionButton';
 import { PorscheIcon } from '../../components/shared/PorscheIcon';
+import { PageContainer } from '../../components/layout/PageContainer';
+import { PageHero } from '../../components/layout/PageHero';
+import { KpiRow } from '../../components/layout/KpiRow';
+import { FiltersBar } from '../../components/layout/FiltersBar';
+import { useToast } from '../../stores/toastStore';
 
 /**
  * Teams page - Team member management with optimistic UI
@@ -18,6 +23,7 @@ export const TeamsPage = () => {
   const setMembers = useTeamStore((state) => state.setMembers);
   const optimisticUpdates = useTeamStore((state) => state.optimisticUpdates);
   const { members, createMember, updateMember, deleteMember, toggleStatus } = useTeamMembers();
+  const { showSuccess, showError } = useToast();
 
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -46,12 +52,16 @@ export const TeamsPage = () => {
     try {
       if (editingMember) {
         await updateMember(editingMember.id, data);
+        showSuccess('Team member updated', `${data.name} has been updated successfully`);
       } else {
         await createMember(data);
+        showSuccess('Team member added', `${data.name} has been added to the team`);
       }
       handleCloseForm();
     } catch (err) {
       console.error('Operation failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Please try again';
+      showError('Operation failed', errorMessage);
       setError('Operation failed. Please try again.');
     }
   };
@@ -69,19 +79,28 @@ export const TeamsPage = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this team member?')) return;
     
+    const member = members.find(m => m.id === id);
     try {
       await deleteMember(id);
+      showSuccess('Team member removed', member ? `${member.name} has been removed from the team` : 'Member removed successfully');
     } catch (err) {
       console.error('Delete failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Please try again';
+      showError('Delete failed', errorMessage);
       setError('Delete failed. Please try again.');
     }
   };
 
   const handleToggleStatus = async (id: string) => {
+    const member = members.find(m => m.id === id);
+    const newStatus = member?.status === 'active' ? 'inactive' : 'active';
     try {
       await toggleStatus(id);
+      showSuccess('Status updated', member ? `${member.name} is now ${newStatus}` : 'Status updated successfully');
     } catch (err) {
       console.error('Toggle status failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Please try again';
+      showError('Toggle status failed', errorMessage);
       setError('Toggle status failed. Please try again.');
     }
   };
@@ -117,80 +136,71 @@ export const TeamsPage = () => {
     );
   }
 
-  return (
-    <div className="space-y-fluid-lg">
-      <PageHeader breadcrumb="Platform Operations · Teams View" />
+  const addIcon = <PorscheIcon name="add" size={16} className="text-white" />;
 
-      {/* Hero: Optimistic UI Monitor */}
-      <div className="space-y-2">
-        <h2 className="text-heading-lg font-bold text-porsche-black font-porsche tracking-tight">
-          Optimistic UI Monitor
-        </h2>
-        <p className="text-sm text-porsche-neutral-600 font-porsche">
-          End-to-end request success across all environments and operations
-        </p>
-        <div className="pt-2">
+  return (
+    <PageContainer>
+      <div className="space-y-fluid-lg">
+        <PageHeader breadcrumb="Platform Operations · Teams View" />
+
+        <PageHero
+          title="Team Members"
+          subtitle="Manage your team with real-time optimistic UI updates"
+          primaryAction={{
+            label: 'Add Team Member',
+            icon: addIcon,
+            onPress: () => setShowForm(true)
+          }}
+        />
+
+        {/* Optimistic UI Monitor */}
+        <div className="bg-white rounded-porsche p-fluid-md border border-porsche-silver shadow-porsche-sm">
+          <h3 className="text-heading-sm font-bold text-porsche-neutral-800 font-porsche tracking-tight mb-2">
+            Optimistic UI Monitor
+          </h3>
+          <p className="text-sm text-porsche-neutral-600 font-porsche mb-4">
+            End-to-end request success across all environments and operations
+          </p>
           <OptimisticUIMonitor />
         </div>
-      </div>
 
-      {/* People & Infrastructure Stats */}
-      <div>
-        <h3 className="text-heading-sm font-bold text-porsche-neutral-800 font-porsche tracking-tight mb-fluid-sm">
-          People & Infrastructure
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-fluid-sm">
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs text-porsche-neutral-600 mb-1 uppercase tracking-wide font-semibold font-porsche">
-              Total Members
-            </div>
-            <div className="text-3xl font-bold text-porsche-neutral-800 font-porsche">{members.length}</div>
-          </div>
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs text-porsche-neutral-600 mb-1 uppercase tracking-wide font-semibold font-porsche">
-              Active
-            </div>
-            <div className="text-3xl font-bold text-porsche-success font-porsche">
-              {members.filter((m) => m.status === 'active').length}
-            </div>
-          </div>
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs text-porsche-neutral-600 mb-1 uppercase tracking-wide font-semibold font-porsche">
-              Inactive
-            </div>
-            <div className="text-3xl font-bold text-porsche-neutral-500 font-porsche">
-              {members.filter((m) => m.status === 'inactive').length}
-            </div>
-          </div>
-          <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <div className="text-xs text-porsche-neutral-600 mb-1 uppercase tracking-wide font-semibold font-porsche">
-              Environments
-            </div>
-            <div className="text-3xl font-bold text-porsche-neutral-800 font-porsche">12</div>
-          </div>
-        </div>
-      </div>
+        <KpiRow
+          tiles={[
+            {
+              label: 'Total Members',
+              value: members.length,
+              color: 'gray',
+            },
+            {
+              label: 'Active',
+              value: members.filter((m) => m.status === 'active').length,
+              color: 'green',
+              icon: <PorscheIcon name="success" size={16} className="text-green-600" />,
+            },
+            {
+              label: 'Inactive',
+              value: members.filter((m) => m.status === 'inactive').length,
+              color: 'gray',
+            },
+            {
+              label: 'Environments',
+              value: 12,
+              color: 'blue',
+            },
+          ]}
+        />
 
-      {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-fluid-sm">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Search team members..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-porsche-silver rounded-porsche focus:outline-none focus:ring-2 focus:ring-console-primary focus:ring-offset-2 shadow-porsche-sm hover:border-porsche-silver-dark transition-colors bg-white font-porsche"
-          />
-        </div>
-        <div className="flex gap-2">
-          <ActionButton variant="secondary" onPress={() => alert('Import CSV feature coming soon')}>
-            Import CSV
-          </ActionButton>
-          <ActionButton variant="primary" icon="add" onPress={() => setShowForm(true)}>
-            Add Team Member
-          </ActionButton>
-        </div>
-      </div>
+        <FiltersBar
+          searchPlaceholder="Search team members..."
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          primaryAction={{
+            label: 'Add Team Member',
+            mobileLabel: 'Add Member',
+            icon: addIcon,
+            onPress: () => setShowForm(true)
+          }}
+        />
 
       {/* Content: Members or Empty State */}
       {filteredMembers.length === 0 ? (
@@ -285,6 +295,7 @@ export const TeamsPage = () => {
           {error}
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 };
