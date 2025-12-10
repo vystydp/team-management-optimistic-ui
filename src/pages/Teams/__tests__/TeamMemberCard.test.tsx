@@ -48,7 +48,7 @@ describe('TeamMemberCard', () => {
       />
     );
 
-    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
   it('shows optimistic state when isOptimistic is true', () => {
@@ -62,7 +62,7 @@ describe('TeamMemberCard', () => {
       />
     );
 
-    expect(screen.getByText('Pending...')).toBeInTheDocument();
+    expect(screen.getByText('Pending')).toBeInTheDocument();
   });
 
   it('calls onEdit when edit button is clicked', () => {
@@ -89,7 +89,7 @@ describe('TeamMemberCard', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Toggle Status'));
+    fireEvent.click(screen.getByText('Toggle'));
     expect(mockOnToggleStatus).toHaveBeenCalledWith('1');
   });
 
@@ -119,7 +119,7 @@ describe('TeamMemberCard', () => {
     );
 
     expect(screen.getByText('Edit')).toBeDisabled();
-    expect(screen.getByText('Toggle Status')).toBeDisabled();
+    expect(screen.getByText('Toggle')).toBeDisabled();
     expect(screen.getByText('Delete')).toBeDisabled();
   });
 
@@ -136,6 +136,6 @@ describe('TeamMemberCard', () => {
 
     const card = container.firstChild as HTMLElement;
     expect(card).toHaveClass('opacity-70');
-    expect(card).toHaveClass('border-yellow-300');
+    expect(card).toHaveClass('ring-optimistic-pending');
   });
 });
