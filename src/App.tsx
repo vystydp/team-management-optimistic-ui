@@ -106,7 +106,6 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-          <Route path="/auth/login" element={<Navigate to="/login" replace />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           
           {/* Protected routes */}

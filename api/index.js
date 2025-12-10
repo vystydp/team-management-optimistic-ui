@@ -1,8 +1,10 @@
-// Vercel Serverless Function entry point for backend
-// Note: Vercel needs to build TypeScript first
+// Vercel Serverless Function entry point
+// Vercel automatically compiles TypeScript in the api/ directory
 
-// For Vercel, we need to use the compiled JS or ts-node
-const path = require('path');
-
-// Simple approach: import the TypeScript directly (Vercel supports this)
-module.exports = require('../backend/src/server.ts').default;
+module.exports = async (req, res) => {
+  // Import the Express app (Vercel will handle TypeScript compilation)
+  const app = (await import('../backend/src/server.js')).default;
+  
+  // Let Express handle the request
+  return app(req, res);
+};
