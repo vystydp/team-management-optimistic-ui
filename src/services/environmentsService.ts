@@ -8,7 +8,10 @@
 import type { TeamEnvironment } from '../types/aws';
 
 const USE_REAL_BACKEND = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+// In production (Vercel), use relative URLs (same domain as frontend)
+// In development, use localhost backend
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
 
 export interface CreateEnvironmentRequest {
   name: string;
