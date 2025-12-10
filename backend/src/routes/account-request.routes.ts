@@ -1,6 +1,6 @@
 import express from 'express';
 import { accountRequestStorage } from '../services/account-request.storage';
-import type { CreateAccountRequestInput } from '../types/aws';
+import type { CreateAccountRequestInput, AccountRequestStatus } from '../types/aws';
 import type { User } from '../types/user';
 
 const router = express.Router();
