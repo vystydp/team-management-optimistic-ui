@@ -65,7 +65,7 @@ router.get('/', (req, res) => {
   try {
     const result = accountRequestStorage.list({
       userId: user.id,
-      status: status as 'PENDING' | 'CREATING' | 'ACTIVE' | 'FAILED' | undefined,
+      status: status as AccountRequestStatus | undefined,
       limit,
       offset,
     });
