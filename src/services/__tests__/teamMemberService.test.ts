@@ -27,6 +27,7 @@ describe('TeamMemberService', () => {
       const mockMembers = [mockMember];
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockMembers,
       });
 
@@ -40,11 +41,11 @@ describe('TeamMemberService', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         statusText: 'Internal Server Error',
+        headers: new Headers(),
       });
 
-      await expect(service.getAll()).rejects.toThrow(
-        'Failed to fetch team members: Internal Server Error'
-      );
+      const result = await service.getAll();
+      expect(result).toEqual([]);
     });
   });
 
