@@ -226,4 +226,5 @@ app.listen(PORT, () => {
   }
 });
 
+// Export app for Vercel serverless (don't start server)
 export default app;
