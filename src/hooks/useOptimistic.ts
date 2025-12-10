@@ -16,6 +16,16 @@ export function useOptimistic<T>(
   const currentState = optimisticState !== null ? optimisticState : actualState;
 
   /**
+   * Rolls back optimistic update to actual state
+   */
+  const rollback = useCallback(() => {
+    if (optimisticTimeoutRef.current) {
+      clearTimeout(optimisticTimeoutRef.current);
+    }
+    setOptimisticState(null);
+  }, []);
+
+  /**
    * Sets optimistic state that will be used until confirmed or rolled back
    */
   const setOptimistic = useCallback(
@@ -52,16 +62,6 @@ export function useOptimistic<T>(
       clearTimeout(optimisticTimeoutRef.current);
     }
     setActualState(newActualState);
-    setOptimisticState(null);
-  }, []);
-
-  /**
-   * Rolls back optimistic update to actual state
-   */
-  const rollback = useCallback(() => {
-    if (optimisticTimeoutRef.current) {
-      clearTimeout(optimisticTimeoutRef.current);
-    }
     setOptimisticState(null);
   }, []);
 
