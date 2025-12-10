@@ -108,7 +108,19 @@ export class AwsAccountService {
 
     // Create GuardrailedAccountClaim in Kubernetes
     try {
-      const claimRequest: any = {
+      interface ClaimRequest {
+        accountId: string;
+        accountName: string;
+        roleArn: string;
+        ownerEmail: string;
+        enableCloudTrail?: boolean;
+        enableConfig?: boolean;
+        budgetAmountUSD?: number;
+        budgetThresholdPercent?: number;
+        primaryRegion?: string;
+        allowedRegions?: string[];
+      }
+      const claimRequest: ClaimRequest = {
         accountId: account.accountId,
         accountName: account.accountName,
         roleArn: account.roleArn,
@@ -116,12 +128,12 @@ export class AwsAccountService {
       };
       
       // Add optional guardrail parameters if present
-      if ('enableCloudTrail' in account) claimRequest.enableCloudTrail = (account as any).enableCloudTrail;
-      if ('enableConfig' in account) claimRequest.enableConfig = (account as any).enableConfig;
-      if ('budgetAmountUSD' in account) claimRequest.budgetAmountUSD = (account as any).budgetAmountUSD;
-      if ('budgetThresholdPercent' in account) claimRequest.budgetThresholdPercent = (account as any).budgetThresholdPercent;
-      if ('primaryRegion' in account) claimRequest.primaryRegion = (account as any).primaryRegion;
-      if ('allowedRegions' in account) claimRequest.allowedRegions = (account as any).allowedRegions;
+      if ('enableCloudTrail' in account) claimRequest.enableCloudTrail = account.enableCloudTrail;
+      if ('enableConfig' in account) claimRequest.enableConfig = account.enableConfig;
+      if ('budgetAmountUSD' in account) claimRequest.budgetAmountUSD = account.budgetAmountUSD;
+      if ('budgetThresholdPercent' in account) claimRequest.budgetThresholdPercent = account.budgetThresholdPercent;
+      if ('primaryRegion' in account) claimRequest.primaryRegion = account.primaryRegion;
+      if ('allowedRegions' in account) claimRequest.allowedRegions = account.allowedRegions;
       
       const claim = await crossplaneGuardrailClient.createClaim(claimRequest);
 

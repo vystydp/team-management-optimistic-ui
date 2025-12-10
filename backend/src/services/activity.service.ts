@@ -16,11 +16,11 @@ interface ActivityEvent {
     email?: string;
   };
   action: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   changes?: {
     field: string;
-    oldValue: any;
-    newValue: any;
+    oldValue: unknown;
+    newValue: unknown;
   }[];
 }
 

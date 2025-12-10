@@ -209,8 +209,8 @@ export const EnvironmentsPage = () => {
         const createdEnv = await environmentsService.createEnvironment({
           name: data.name,
           teamId: 'team-1', // Mock team ID for Phase 2
-          templateType: template.type as any,
-          size: (template.parameters.size || 'small') as any,
+          templateType: template.type as 'development' | 'staging' | 'production',
+          size: (template.parameters.size || 'small') as 'small' | 'medium' | 'large' | 'xlarge',
           ttlDays: data.ttl ? Math.ceil((data.ttl.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : undefined,
           enableDatabase: true,
           databaseEngine: 'postgres',
@@ -353,7 +353,7 @@ export const EnvironmentsPage = () => {
       status: 'UPDATING',
       parameters: {
         ...env.parameters,
-        size: newSize as any,
+        size: newSize as 'small' | 'medium' | 'large' | 'xlarge',
       },
       updatedAt: new Date()
     };
@@ -365,7 +365,7 @@ export const EnvironmentsPage = () => {
     try {
       if (USE_REAL_BACKEND) {
         const scaledEnv = await environmentsService.updateEnvironment(envId, {
-          size: newSize as any,
+          size: newSize as 'small' | 'medium' | 'large' | 'xlarge',
         });
         commitOptimistic(updateId, scaledEnv);
         showSuccess('Environment scaled', `${env.name} is now ${newSize}`);
@@ -402,7 +402,7 @@ export const EnvironmentsPage = () => {
       awsAccount: sourceEnv.awsAccount,
       parameters: {
         ...sourceEnv.parameters,
-        size: (customizations.size || sourceEnv.parameters?.size) as any,
+        size: (customizations.size || sourceEnv.parameters?.size) as 'small' | 'medium' | 'large' | 'xlarge',
         region: customizations.region || sourceEnv.parameters?.region || 'us-east-1',
         ttl: customizations.ttlDays
           ? new Date(Date.now() + customizations.ttlDays * 24 * 60 * 60 * 1000)
@@ -428,8 +428,8 @@ export const EnvironmentsPage = () => {
         const newEnv = await environmentsService.createEnvironment({
           name: newName,
           teamId: sourceEnv.teamId,
-          templateType: sourceEnv.template?.type as any || 'development',
-          size: (customizations.size || sourceEnv.parameters?.size) as any || 'medium',
+          templateType: (sourceEnv.template?.type || 'development') as 'development' | 'staging' | 'production',
+          size: ((customizations.size || sourceEnv.parameters?.size) || 'medium') as 'small' | 'medium' | 'large' | 'xlarge',
           ttlDays: customizations.ttlDays,
         });
         commitOptimistic(updateId, newEnv);
