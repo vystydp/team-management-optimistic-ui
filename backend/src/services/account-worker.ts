@@ -1,6 +1,5 @@
 import { IOrganizationsClient } from './aws-organizations.client';
 import { accountRequestStorage } from './account-request.storage';
-import { AccountRequestStatus } from '../types/aws';
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
@@ -68,7 +67,7 @@ export const processAccountRequestsOnce = async (orgClient: IOrganizationsClient
         continue;
       }
 
-    } catch (err: any) {
+    } catch (err) {
       // Any error transitions to FAILED state
       accountRequestStorage.updateStatus(
         req.id,

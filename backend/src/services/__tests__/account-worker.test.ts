@@ -131,8 +131,8 @@ describe('Account Provisioning Worker', () => {
       const failingClient = new MockOrganizationsClient();
       const originalDescribe = failingClient.describeCreateAccountStatus.bind(failingClient);
       
-      failingClient.describeCreateAccountStatus = async (createRequestId: string) => {
-        const result = await originalDescribe(createRequestId);
+      failingClient.describeCreateAccountStatus = async (createRequestId: string): Promise<{ createRequestId: string; state: string; accountId?: string; failureReason?: string }> => {
+        const _result = await originalDescribe(createRequestId);
         // Override to always fail
         return {
           createRequestId,
@@ -165,7 +165,7 @@ describe('Account Provisioning Worker', () => {
     it('should handle errors gracefully and transition to FAILED', async () => {
       // Create a client that throws errors
       const errorClient = new MockOrganizationsClient();
-      errorClient.createAccount = async () => {
+      errorClient.createAccount = async (): Promise<never> => {
         throw new Error('Network error: connection timeout');
       };
 

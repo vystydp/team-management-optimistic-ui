@@ -1,5 +1,4 @@
 import { AccountRequestStorage } from '../account-request.storage';
-import { AccountRequestStatus } from '../../types/aws';
 
 describe('AccountRequestStorage', () => {
   let storage: AccountRequestStorage;
@@ -102,7 +101,7 @@ describe('AccountRequestStorage', () => {
 
   describe('findByUserId', () => {
     it('should find all requests for a user', () => {
-      const req1 = storage.create({
+      const _req1 = storage.create({
         userId: 'user-1',
         accountName: 'account-1',
         ownerEmail: 'a1@example.com',
@@ -110,7 +109,7 @@ describe('AccountRequestStorage', () => {
         primaryRegion: 'us-west-2',
       });
 
-      const req2 = storage.create({
+      const _req2 = storage.create({
         userId: 'user-1',
         accountName: 'account-2',
         ownerEmail: 'a2@example.com',

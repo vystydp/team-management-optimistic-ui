@@ -41,7 +41,7 @@ export function useOptimistic<T>(
         rollback();
       }, 30000);
     },
-    [actualState, currentState, updateFn]
+    [actualState, currentState, updateFn, rollback]
   );
 
   /**
@@ -53,7 +53,6 @@ export function useOptimistic<T>(
     }
     setActualState(newActualState);
     setOptimisticState(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
