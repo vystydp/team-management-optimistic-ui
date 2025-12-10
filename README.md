@@ -326,23 +326,6 @@ For questions or feedback, please open an issue on GitHub.
 - A/B testing capabilities
 - User behavior analytics
 
-## Project Structure
-
-```
-src/
-├── types/              # TypeScript type definitions
-│   └── team.ts         # Team member types and optimistic update types
-├── stores/             # Zustand state management
-│   └── teamStore.ts    # Main store with optimistic UI logic
-├── components/         # React components
-│   ├── TeamMemberCard.tsx
-│   ├── TeamMemberForm.tsx
-│   └── OptimisticUIMonitor.tsx
-├── App.tsx             # Main application component
-├── main.tsx            # Entry point
-└── index.css           # Global styles
-```
-
 ## Key Features
 
 ### Confidence Scoring
