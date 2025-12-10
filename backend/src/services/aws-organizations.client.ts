@@ -25,7 +25,7 @@ export class MockOrganizationsClient implements IOrganizationsClient {
   private seq = 0;
   private records: Map<string, { readyAt: number; accountId?: string; fail?: boolean }> = new Map();
 
-  async createAccount(accountName: string, accountEmail: string): Promise<CreateAccountResult> {
+  async createAccount(_accountName: string, _accountEmail: string): Promise<CreateAccountResult> {
     const createRequestId = `mock-${++this.seq}`;
     // simulate that account will be ready in ~2 seconds
     this.records.set(createRequestId, { readyAt: Date.now() + 2000, accountId: `acct-${this.seq}` });
@@ -47,7 +47,7 @@ export class MockOrganizationsClient implements IOrganizationsClient {
 // Real client implementation using AWS SDK v3. This is lazy-imported so tests that
 // use the mock won't require the SDK to be installed.
 export class RealOrganizationsClient implements IOrganizationsClient {
-  private client: any;
+  private client: { createAccount: (params: unknown) => Promise<unknown>; describeCreateAccountStatus: (params: unknown) => Promise<unknown> };
 
   constructor(options?: { region?: string }) {
     // Import lazily so unit tests that don't have AWS SDK won't fail to import this file

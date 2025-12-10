@@ -46,7 +46,7 @@ router.post('/', (req, res) => {
     });
     
     res.status(201).json(created);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to create account request:', err);
     res.status(500).json({ error: 'Failed to create account request' });
   }
@@ -65,13 +65,13 @@ router.get('/', (req, res) => {
   try {
     const result = accountRequestStorage.list({
       userId: user.id,
-      status: status as any,
+      status: status as 'PENDING' | 'CREATING' | 'ACTIVE' | 'FAILED' | undefined,
       limit,
       offset,
     });
     
     res.json(result);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to list account requests:', err);
     res.status(500).json({ error: 'Failed to list account requests' });
   }

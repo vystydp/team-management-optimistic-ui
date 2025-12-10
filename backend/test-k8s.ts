@@ -1,7 +1,7 @@
 // Quick test script to verify K8s connection
 import * as k8s from '@kubernetes/client-node';
 
-async function testK8sConnection() {
+async function testK8sConnection(): Promise<void> {
   const kc = new k8s.KubeConfig();
 
   try {
@@ -70,8 +70,9 @@ async function testK8sConnection() {
   );
   console.log('✅ Cleaned up');
 
-} catch (error: any) {
-  console.error('❌ Error:', error.message);
+} catch (error) {
+  const err = error as Error & { body?: unknown; response?: unknown };
+  console.error('❌ Error:', err.message);
   if (error.body) {
     console.error('Response body:', JSON.stringify(error.body, null, 2));
   }

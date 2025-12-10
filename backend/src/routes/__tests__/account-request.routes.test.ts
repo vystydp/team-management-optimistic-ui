@@ -152,7 +152,7 @@ describe('Account Request Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.total).toBe(2);
       expect(response.body.requests).toHaveLength(2);
-      expect(response.body.requests.every((r: any) => r.userId === 'user-1')).toBe(true);
+      expect(response.body.requests.every((r: { userId: string }) => r.userId === 'user-1')).toBe(true);
     });
 
     it('should filter by status', async () => {

@@ -31,7 +31,7 @@ describe('CrossplaneGuardrailClient', () => {
       getNamespacedCustomObject: jest.fn(),
       listNamespacedCustomObject: jest.fn(),
       deleteNamespacedCustomObject: jest.fn(),
-    } as any;
+    } as unknown as CustomObjectsApi;
 
     mockKubeConfig.makeApiClient.mockReturnValue(mockK8sApi);
 
@@ -64,7 +64,7 @@ describe('CrossplaneGuardrailClient', () => {
 
       mockK8sApi.createNamespacedCustomObject.mockResolvedValue({
         body: mockClaim,
-      } as any);
+      } as unknown);
 
       const result = await client.createClaim(spec);
 
@@ -113,7 +113,7 @@ describe('CrossplaneGuardrailClient', () => {
 
       mockK8sApi.getNamespacedCustomObject.mockResolvedValue({
         body: mockClaim,
-      } as any);
+      } as unknown);
 
       const result = await client.getClaim(claimName);
 
@@ -156,7 +156,7 @@ describe('CrossplaneGuardrailClient', () => {
 
       mockK8sApi.listNamespacedCustomObject.mockResolvedValue({
         body: { items: [mockClaim] },
-      } as any);
+      } as unknown);
 
       const result = await client.getClaimByAccountId(accountId);
 
@@ -177,7 +177,7 @@ describe('CrossplaneGuardrailClient', () => {
     it('should return null when no claims found', async () => {
       mockK8sApi.listNamespacedCustomObject.mockResolvedValue({
         body: { items: [] },
-      } as any);
+      } as unknown);
 
       const result = await client.getClaimByAccountId('999999999999');
 
@@ -187,7 +187,7 @@ describe('CrossplaneGuardrailClient', () => {
 
   describe('deleteClaim', () => {
     it('should delete claim successfully', async () => {
-      mockK8sApi.deleteNamespacedCustomObject.mockResolvedValue({} as any);
+      mockK8sApi.deleteNamespacedCustomObject.mockResolvedValue({} as unknown);
 
       const result = await client.deleteClaim('test-claim');
 
@@ -226,7 +226,7 @@ describe('CrossplaneGuardrailClient', () => {
         status: {
           guardrailsApplied: true,
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -241,7 +241,7 @@ describe('CrossplaneGuardrailClient', () => {
         status: {
           errorMessage: 'Failed to create CloudTrail',
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -263,7 +263,7 @@ describe('CrossplaneGuardrailClient', () => {
             },
           ],
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -285,7 +285,7 @@ describe('CrossplaneGuardrailClient', () => {
             },
           ],
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -307,7 +307,7 @@ describe('CrossplaneGuardrailClient', () => {
             },
           ],
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -318,7 +318,7 @@ describe('CrossplaneGuardrailClient', () => {
     });
 
     it('should return guardrailing when no status available', () => {
-      const claim = {} as any;
+      const claim = {} as unknown;
 
       const result = client.getGuardrailStatus(claim);
 
@@ -344,7 +344,7 @@ describe('CrossplaneGuardrailClient', () => {
             },
           ],
         },
-      } as any;
+      } as unknown;
 
       const result = client.getGuardrailStatus(claim);
 

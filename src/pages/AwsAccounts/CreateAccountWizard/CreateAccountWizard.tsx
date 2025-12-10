@@ -47,7 +47,7 @@ export const CreateAccountWizard: React.FC = () => {
         updatedAt: new Date().toISOString(),
       };
 
-      queryClient.setQueryData(['accountRequests'], (old: any) => ({
+      queryClient.setQueryData(['accountRequests'], (old: { requests: AccountRequest[]; total: number } | undefined) => ({
         requests: [optimisticRequest, ...(old?.requests || [])],
         total: (old?.total || 0) + 1,
       }));
@@ -69,7 +69,7 @@ export const CreateAccountWizard: React.FC = () => {
     // On success: replace temp with real data
     onSuccess: (newRequest: AccountRequest) => {
       // Replace optimistic request with real one
-      queryClient.setQueryData(['accountRequests'], (old: any) => ({
+      queryClient.setQueryData(['accountRequests'], (old: { requests: AccountRequest[]; total: number } | undefined) => ({
         requests: [
           newRequest,
           ...(old?.requests || []).filter((r: AccountRequest) => !r.id.startsWith('temp-'))
