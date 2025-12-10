@@ -47,7 +47,7 @@ export class MockOrganizationsClient implements IOrganizationsClient {
 // Real client implementation using AWS SDK v3. This is lazy-imported so tests that
 // use the mock won't require the SDK to be installed.
 export class RealOrganizationsClient implements IOrganizationsClient {
-  private client: { createAccount: (params: unknown) => Promise<unknown>; describeCreateAccountStatus: (params: unknown) => Promise<unknown> };
+  private client: any;
 
   constructor(options?: { region?: string }) {
     // Import lazily so unit tests that don't have AWS SDK won't fail to import this file

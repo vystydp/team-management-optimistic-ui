@@ -72,7 +72,7 @@ export const processAccountRequestsOnce = async (orgClient: IOrganizationsClient
       accountRequestStorage.updateStatus(
         req.id,
         'FAILED',
-        `Worker error: ${err?.message || String(err)}`
+        `Worker error: ${(err as Error)?.message || String(err)}`
       );
     }
   }
