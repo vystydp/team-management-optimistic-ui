@@ -61,7 +61,7 @@ export const CloneEnvironmentDialog: React.FC<CloneEnvironmentDialogProps> = ({
 
     setIsSubmitting(true);
     try {
-      const customizations: any = {};
+      const customizations: { size?: string; ttlDays?: number; region?: string } = {};
       
       if (customizeSettings) {
         if (size !== environment.parameters?.size) {

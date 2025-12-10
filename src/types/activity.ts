@@ -45,11 +45,11 @@ export interface ActivityEvent {
     email?: string;
   };
   action: string; // Human-readable action description
-  metadata?: Record<string, any>; // Additional context
+  metadata?: Record<string, unknown>; // Additional context
   changes?: {
     field: string;
-    oldValue: any;
-    newValue: any;
+    oldValue: unknown;
+    newValue: unknown;
   }[];
 }
 
