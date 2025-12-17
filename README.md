@@ -1,6 +1,6 @@
 # Team Management App - Optimistic UI Implementation
 
-A scalable, production-ready React application demonstrating the **Optimistic UI pattern** with **Test-Driven Development (TDD)**, designed for deployment on Vercel's free tier.
+A scalable React application demonstrating the **Optimistic UI pattern** with **Test-Driven Development (TDD)**, designed for deployment on Vercel's free tier.
 
 ## 🎯 Overview
 
