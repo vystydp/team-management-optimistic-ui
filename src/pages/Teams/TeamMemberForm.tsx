@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Button,
   Dialog,
@@ -22,28 +22,18 @@ interface TeamMemberFormProps {
 }
 
 export const TeamMemberForm: React.FC<TeamMemberFormProps> = ({ member, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState<TeamMemberFormData>({
-    name: '',
-    email: '',
-    role: '',
-    department: '',
-    status: 'active',
-  });
+  // The modal mounts fresh each time it opens, so initialize directly from the
+  // member prop (lazy initializer) instead of syncing it in via an Effect.
+  const [formData, setFormData] = useState<TeamMemberFormData>(() => ({
+    name: member?.name ?? '',
+    email: member?.email ?? '',
+    role: member?.role ?? '',
+    department: member?.department ?? '',
+    status: member?.status ?? 'active',
+  }));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (member) {
-      setFormData({
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        department: member.department,
-        status: member.status,
-      });
-    }
-  }, [member]);
 
   // Update a field and clear its validation error as the user types.
   const handleFieldChange = (field: keyof TeamMemberFormData) => (value: string) => {
