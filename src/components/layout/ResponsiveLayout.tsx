@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Button } from 'react-aria-components';
 import { PorscheIcon } from '../shared/PorscheIcon';
 import { ICONS_MANIFEST } from '@porsche-design-system/assets';
@@ -19,6 +19,16 @@ export interface ResponsiveLayoutProps {
 export const ResponsiveLayout = ({ children, currentTab, onTabChange }: ResponsiveLayoutProps) => {
   const { user, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Close the user menu on Escape for keyboard accessibility.
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowUserMenu(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showUserMenu]);
 
   const tabs: { id: NavigationTab; label: string; icon: keyof typeof ICONS_MANIFEST }[] = [
     { id: 'teams', label: 'Teams', icon: 'userGroup' },
@@ -45,12 +55,15 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
             <div className="relative">
               <Button
                 onPress={() => setShowUserMenu(!showUserMenu)}
+                aria-label="Open user menu"
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
                 className="flex items-center gap-2 px-2 py-1 rounded-porsche hover:bg-porsche-shading"
               >
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.login} className="w-6 h-6 rounded-full" />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-porsche-gray-300 flex items-center justify-center text-xs">
+                  <div className="w-6 h-6 rounded-full bg-porsche-neutral-300 flex items-center justify-center text-xs">
                     {user.login[0].toUpperCase()}
                   </div>
                 )}
@@ -58,12 +71,12 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-porsche-md shadow-porsche-lg border border-porsche-silver py-1">
                   <div className="px-4 py-2 border-b border-porsche-silver">
-                    <p className="text-xs font-semibold text-porsche-gray-900">{user.name || user.login}</p>
-                    <p className="text-xs text-porsche-gray-600">@{user.login}</p>
+                    <p className="text-xs font-semibold text-porsche-neutral-900">{user.name || user.login}</p>
+                    <p className="text-xs text-porsche-neutral-600">@{user.login}</p>
                   </div>
                   <Button
                     onPress={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-porsche-gray-700 hover:bg-porsche-shading"
+                    className="w-full text-left px-4 py-2 text-sm text-porsche-neutral-700 hover:bg-porsche-shading"
                   >
                     Sign out
                   </Button>
@@ -115,7 +128,7 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
                     {user.avatarUrl ? (
                       <img src={user.avatarUrl} alt={user.login} className="w-8 h-8 rounded-full" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-porsche-gray-300 flex items-center justify-center text-sm">
+                      <div className="w-8 h-8 rounded-full bg-porsche-neutral-300 flex items-center justify-center text-sm">
                         {user.login[0].toUpperCase()}
                       </div>
                     )}
@@ -123,15 +136,15 @@ export const ResponsiveLayout = ({ children, currentTab, onTabChange }: Responsi
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-porsche-md shadow-porsche-lg border border-porsche-silver py-1 z-20">
                       <div className="px-4 py-3 border-b border-porsche-silver">
-                        <p className="text-sm font-semibold text-porsche-gray-900">{user.name || user.login}</p>
-                        <p className="text-xs text-porsche-gray-600">@{user.login}</p>
+                        <p className="text-sm font-semibold text-porsche-neutral-900">{user.name || user.login}</p>
+                        <p className="text-xs text-porsche-neutral-600">@{user.login}</p>
                         {user.email && (
-                          <p className="text-xs text-porsche-gray-600 mt-1">{user.email}</p>
+                          <p className="text-xs text-porsche-neutral-600 mt-1">{user.email}</p>
                         )}
                       </div>
                       <Button
                         onPress={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-porsche-gray-700 hover:bg-porsche-shading flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-sm text-porsche-neutral-700 hover:bg-porsche-shading flex items-center gap-2"
                       >
                         <PorscheIcon name="close" size={16} />
                         Sign out

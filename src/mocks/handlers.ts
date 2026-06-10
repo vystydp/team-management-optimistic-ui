@@ -290,7 +290,72 @@ export const handlers = [
       },
     ];
 
-    return HttpResponse.json(accounts);
+    // awsAccountService expects an object envelope: { accounts: [...] }
+    return HttpResponse.json({ accounts });
+  }),
+
+  // Link an existing AWS account
+  http.post('/api/aws/link-account', async ({ request }) => {
+    await delay(SIMULATED_DELAY);
+
+    const body = (await request.json()) as {
+      accountId: string;
+      accountName: string;
+      roleArn: string;
+      ownerEmail: string;
+    };
+
+    const account: AwsAccountRef = {
+      id: `acc-${Date.now()}`,
+      accountId: body.accountId,
+      accountName: body.accountName,
+      roleArn: body.roleArn,
+      type: 'linked',
+      status: 'linked',
+      ownerEmail: body.ownerEmail,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: {},
+    };
+
+    return HttpResponse.json({ account }, { status: 201 });
+  }),
+
+  // ===================
+  // AWS Account Requests
+  // ===================
+  http.get('/api/aws/account-requests', async () => {
+    await delay(SIMULATED_DELAY);
+
+    const requests = [
+      {
+        id: 'req-1',
+        userId: 'demo-user',
+        status: 'READY',
+        accountName: 'Analytics Sandbox',
+        ownerEmail: 'analytics@example.com',
+        purpose: 'development',
+        primaryRegion: 'us-east-1',
+        awsAccountId: '345678901234',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        updatedAt: new Date(Date.now() - 3600000).toISOString(),
+        completedAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        id: 'req-2',
+        userId: 'demo-user',
+        status: 'GUARDRAILING',
+        accountName: 'Payments Staging',
+        ownerEmail: 'payments@example.com',
+        purpose: 'staging',
+        primaryRegion: 'eu-west-1',
+        awsAccountId: '456789012345',
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+        updatedAt: new Date(Date.now() - 600000).toISOString(),
+      },
+    ];
+
+    return HttpResponse.json({ requests, total: requests.length });
   }),
 
   // ===================
@@ -383,9 +448,84 @@ export const handlers = [
       );
     }
 
-    return HttpResponse.json({ 
+    return HttpResponse.json({
       message: 'Environment deleted successfully',
-      id: params.id 
+      id: params.id
+    });
+  }),
+
+  // ===================
+  // Activity Feed
+  // ===================
+  http.get('/api/activity', async ({ request }) => {
+    await delay(SIMULATED_DELAY);
+
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get('page') ?? '1');
+    const pageSize = Number(url.searchParams.get('pageSize') ?? '20');
+
+    const events = [
+      {
+        id: 'evt-1',
+        timestamp: new Date(Date.now() - 300000).toISOString(),
+        type: 'environment.created',
+        resourceType: 'environment',
+        resourceId: 'env-dev-001',
+        resourceName: 'Development Environment',
+        actor: { id: 'user-1', name: 'John Doe', email: 'john@example.com' },
+        action: 'Created development environment',
+        metadata: { template: 'Development', size: 'medium' },
+      },
+      {
+        id: 'evt-2',
+        timestamp: new Date(Date.now() - 600000).toISOString(),
+        type: 'team.member.added',
+        resourceType: 'team_member',
+        resourceId: 'member-1',
+        resourceName: 'Alice Smith',
+        actor: { id: 'user-1', name: 'John Doe' },
+        action: 'Added team member Alice Smith',
+        metadata: { role: 'Developer' },
+      },
+      {
+        id: 'evt-3',
+        timestamp: new Date(Date.now() - 1800000).toISOString(),
+        type: 'environment.scaled',
+        resourceType: 'environment',
+        resourceId: 'env-dev-001',
+        resourceName: 'Development Environment',
+        actor: { id: 'user-1', name: 'John Doe' },
+        action: 'Scaled environment from medium to large',
+        changes: [{ field: 'size', oldValue: 'medium', newValue: 'large' }],
+      },
+    ];
+
+    return HttpResponse.json({
+      events,
+      total: events.length,
+      page,
+      pageSize,
+      hasMore: false,
+    });
+  }),
+
+  http.get('/api/activity/stats', async () => {
+    await delay(SIMULATED_DELAY);
+
+    return HttpResponse.json({
+      total: 8,
+      byResourceType: {
+        environment: 3,
+        team_member: 2,
+        aws_account: 2,
+        crossplane_resource: 1,
+      },
+      byActor: {
+        'John Doe': 5,
+        'Crossplane Controller': 2,
+        'System': 1,
+      },
+      recentActivity: [],
     });
   }),
 ];

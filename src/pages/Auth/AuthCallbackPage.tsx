@@ -45,13 +45,13 @@ export function AuthCallbackPage(): JSX.Element {
   }, [navigate, checkAuth]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-porsche-gray-100 to-porsche-gray-200 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-porsche-neutral-100 to-porsche-neutral-200 flex items-center justify-center p-4">
       <div className="bg-white rounded-porsche-lg shadow-porsche-xl max-w-md w-full p-8 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-porsche-gray-900 mx-auto mb-4"></div>
-        <h2 className="text-xl font-semibold text-porsche-gray-900 mb-2">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-porsche-neutral-900 mx-auto mb-4"></div>
+        <h2 className="text-xl font-semibold text-porsche-neutral-900 mb-2">
           Completing sign in...
         </h2>
-        <p className="text-porsche-gray-600">
+        <p className="text-porsche-neutral-600">
           Please wait while we authenticate you.
         </p>
       </div>

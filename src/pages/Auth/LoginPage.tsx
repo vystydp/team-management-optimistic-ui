@@ -55,6 +55,13 @@ export function LoginPage(): JSX.Element {
         </div>
 
         <div className="space-y-4">
+          {authService.isDemoMode && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-porsche-md text-sm">
+              <span className="font-medium">Demo mode</span> — no GitHub account
+              required. Click below to explore the app with sample data.
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-porsche-md text-sm">
               {error}
@@ -88,7 +95,7 @@ export function LoginPage(): JSX.Element {
                     clipRule="evenodd"
                   />
                 </svg>
-                Sign in with GitHub
+                {authService.isDemoMode ? 'Continue as demo user' : 'Sign in with GitHub'}
               </>
             )}
           </Button>

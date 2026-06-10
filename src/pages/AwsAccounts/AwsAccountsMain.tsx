@@ -5,6 +5,9 @@ import { PageHero } from '../../components/layout/PageHero';
 import { TabsBar } from '../../components/layout/TabsBar';
 import { KpiRow } from '../../components/layout/KpiRow';
 import { ActionButton } from '../../components/shared/ActionButton';
+import { LinkAccountModal, LinkAccountFormData } from '../../components/aws/LinkAccountModal';
+import { awsAccountService } from '../../services/awsAccountService';
+import { useToast } from '../../stores/toastStore';
 import { AccountRequestList } from './AccountRequestList';
 
 type TabType = 'linked' | 'requests';
@@ -15,15 +18,27 @@ type TabType = 'linked' | 'requests';
  */
 export const AwsAccountsMain: React.FC = () => {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('requests');
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
 
   const handleRequestNew = () => {
     navigate('/aws-accounts/new');
   };
 
   const handleLinkExisting = () => {
-    // TODO: Implement linking wizard in future phase
-    alert('Account linking wizard coming soon!');
+    setIsLinkOpen(true);
+  };
+
+  const handleLinkSubmit = async (data: LinkAccountFormData) => {
+    try {
+      await awsAccountService.linkAccount(data);
+      showSuccess('Account linked', `${data.accountName} has been linked successfully`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Please try again';
+      showError('Failed to link account', message);
+      throw err; // let the modal surface the error inline
+    }
   };
 
   const linkIcon = (
@@ -67,7 +82,17 @@ export const AwsAccountsMain: React.FC = () => {
       />
 
       {/* Tab Content */}
-      {activeTab === 'linked' ? <LinkedAccountsTab /> : <AccountRequestsTab />}
+      {activeTab === 'linked' ? (
+        <LinkedAccountsTab onLink={() => setIsLinkOpen(true)} />
+      ) : (
+        <AccountRequestsTab />
+      )}
+
+      <LinkAccountModal
+        isOpen={isLinkOpen}
+        onClose={() => setIsLinkOpen(false)}
+        onSubmit={handleLinkSubmit}
+      />
     </PageContainer>
   );
 };
@@ -76,7 +101,7 @@ export const AwsAccountsMain: React.FC = () => {
  * Linked Accounts Tab
  * Shows existing AWS accounts with linking process
  */
-const LinkedAccountsTab: React.FC = () => {
+const LinkedAccountsTab: React.FC<{ onLink: () => void }> = ({ onLink }) => {
   const checkIcon = (
     <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -110,7 +135,7 @@ const LinkedAccountsTab: React.FC = () => {
             <p className="text-sm sm:text-base text-gray-500 mb-4">
               Connect your existing AWS account to start deploying environments
             </p>
-            <ActionButton variant="secondary" onPress={() => alert('Linking wizard coming soon!')}>
+            <ActionButton variant="secondary" onPress={onLink}>
               Link Your AWS Account
             </ActionButton>
           </div>
@@ -153,7 +178,7 @@ const LinkedAccountsTab: React.FC = () => {
             </div>
             <div className="mt-6 pt-4 border-t border-blue-200">
               <div className="w-full">
-                <ActionButton variant="secondary" onPress={() => alert('Linking wizard coming soon!')}>
+                <ActionButton variant="secondary" onPress={onLink}>
                   Start Linking
                 </ActionButton>
               </div>

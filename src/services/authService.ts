@@ -1,15 +1,35 @@
 import type { User, AuthStatus } from '../types/auth';
+import { DEMO_MODE } from '../config/env';
 
 // In production (Vercel), use relative URLs (same domain as frontend)
 // In development, use localhost backend
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ||
   (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
 const TOKEN_KEY = 'auth_token';
+
+// In demo mode (see config/env.ts) the app signs in this stubbed user instead
+// of running the real GitHub OAuth flow, so it works with zero setup.
+const DEMO_TOKEN = 'demo-token';
+const DEMO_USER: User = {
+  id: 'demo-user',
+  githubId: '583231',
+  login: 'demo-user',
+  name: 'Demo User',
+  email: 'demo@example.com',
+  avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
+};
 
 /**
  * Authentication service for frontend
  */
 class AuthService {
+  /**
+   * Whether the app is running without a real backend (mocked data + user).
+   */
+  get isDemoMode(): boolean {
+    return DEMO_MODE;
+  }
+
   /**
    * Get stored auth token
    */
@@ -42,6 +62,13 @@ class AuthService {
    * Initiate GitHub OAuth login flow in popup window
    */
   login(): Promise<string> {
+    // In demo mode there is no OAuth provider — log in instantly as the demo user.
+    if (DEMO_MODE) {
+      this.setToken(DEMO_TOKEN);
+      console.log('[Auth] Demo mode: logged in as demo user');
+      return Promise.resolve(DEMO_TOKEN);
+    }
+
     return new Promise((resolve, reject) => {
       // Open OAuth in popup
       const width = 600;
@@ -122,8 +149,13 @@ class AuthService {
    * Logout user
    */
   async logout(): Promise<void> {
+    if (DEMO_MODE) {
+      this.clearToken();
+      return;
+    }
+
     const token = this.getToken();
-    
+
     // Call backend logout endpoint
     if (token) {
       try {
@@ -146,6 +178,10 @@ class AuthService {
    * Get current authenticated user
    */
   async getCurrentUser(): Promise<User | null> {
+    if (DEMO_MODE) {
+      return this.hasToken() ? DEMO_USER : null;
+    }
+
     const token = this.getToken();
     if (!token) return null;
 
@@ -177,6 +213,12 @@ class AuthService {
    * Check authentication status
    */
   async checkStatus(): Promise<AuthStatus> {
+    if (DEMO_MODE) {
+      return this.hasToken()
+        ? { authenticated: true, user: DEMO_USER }
+        : { authenticated: false };
+    }
+
     const token = this.getToken();
     if (!token) {
       return { authenticated: false };

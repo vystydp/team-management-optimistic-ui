@@ -2,16 +2,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { DEMO_MODE } from './config/env';
 
-// Start MSW in development (only if not using real backend)
+// Start the MSW mock worker whenever the app runs in demo mode (the default).
+// This intentionally also runs in production builds, so the deployed app is a
+// self-contained, backend-free showcase. Set VITE_USE_REAL_BACKEND=true to
+// disable mocking and talk to a real backend instead.
 async function enableMocking() {
-  if (process.env.NODE_ENV !== 'development') {
-    return;
-  }
-
-  // Don't start MSW if using real backend
-  const useRealBackend = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
-  if (useRealBackend) {
+  if (!DEMO_MODE) {
     if (import.meta.env.DEV) {
       console.log('[MSW] Disabled - using real backend at', import.meta.env.VITE_BACKEND_URL);
     }

@@ -3,13 +3,12 @@
  * Frontend service for fetching activity events
  */
 
-import type { 
-  ActivityEvent, 
-  ActivityFeedFilters, 
-  ActivityFeedResponse 
+import type {
+  ActivityEvent,
+  ActivityFeedFilters,
+  ActivityFeedResponse
 } from '../types/activity';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL as API_BASE } from '../config/env';
 
 export async function getActivityFeed(
   page: number = 1,

@@ -4,8 +4,7 @@ import type {
   ListAccountRequestsResponse 
 } from '../types/account-request';
 import { authService } from './authService';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../config/env';
 
 /**
  * Helper to create authenticated request headers

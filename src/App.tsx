@@ -91,10 +91,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-porsche-gray-100 to-porsche-gray-200 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-porsche-neutral-100 to-porsche-neutral-200 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-porsche-gray-900 mx-auto mb-4"></div>
-          <p className="text-porsche-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-porsche-neutral-900 mx-auto mb-4"></div>
+          <p className="text-porsche-neutral-600">Loading...</p>
         </div>
       </div>
     );

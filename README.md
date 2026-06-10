@@ -126,7 +126,30 @@ Start the development server:
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+The application will be available at `http://localhost:3000`.
+
+> **Runs with zero setup (demo mode).** By default the app runs entirely in the
+> browser: it signs you in as a demo user (just click **Continue as demo user**)
+> and serves all data from the in-browser [MSW](https://mswjs.io/) mock worker.
+> No backend process and no GitHub OAuth app are required — `npm install` then
+> `npm run dev` is all you need to explore the full app.
+
+#### Optional: run against the real backend
+
+To use real GitHub OAuth and the Express/Crossplane backend instead of mocks:
+
+1. Register a GitHub OAuth App at https://github.com/settings/developers with
+   callback URL `http://localhost:3001/auth/callback` and homepage
+   `http://localhost:3000`.
+2. `cp backend/.env.example backend/.env` and fill in `GITHUB_CLIENT_ID` /
+   `GITHUB_CLIENT_SECRET`.
+3. Start the backend: `cd backend && npm install && npm run dev` (port 3001).
+4. Start the frontend with the real backend enabled:
+   ```bash
+   VITE_USE_REAL_BACKEND=true npm run dev
+   ```
+   `VITE_USE_REAL_BACKEND=true` disables MSW and the demo user, pointing the app
+   at `http://localhost:3001` (override with `VITE_API_URL`).
 
 ### Testing
 
@@ -251,11 +274,18 @@ Mock Service Worker intercepts network requests in both development and testing:
 
 2. **Configure Environment**
    - Vercel auto-detects Vite configuration
-   - No additional environment variables needed
+   - No environment variables needed for the default demo deployment
 
 3. **Deploy**
    - Push to `main` branch triggers production deployment
    - Pull requests create preview deployments
+
+> **The production build ships in demo mode by default.** The deployed app is a
+> fully self-contained showcase — it signs in a demo user and serves all data
+> from the in-browser MSW mock worker, so the live URL works with **no backend
+> and no secrets**. To deploy against a real backend instead, set
+> `VITE_USE_REAL_BACKEND=true` (plus `VITE_API_URL`) in your Vercel project and
+> deploy the backend separately (see `backend/` and `RAILWAY_DEPLOYMENT.md`).
 
 ### GitHub Actions CI/CD
 
