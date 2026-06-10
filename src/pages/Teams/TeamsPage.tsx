@@ -13,6 +13,7 @@ import { PageContainer } from '../../components/layout/PageContainer';
 import { PageHero } from '../../components/layout/PageHero';
 import { KpiRow } from '../../components/layout/KpiRow';
 import { FiltersBar } from '../../components/layout/FiltersBar';
+import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { useToast } from '../../stores/toastStore';
 
 /**
@@ -30,6 +31,8 @@ export const TeamsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -76,20 +79,33 @@ export const TeamsPage = () => {
     setEditingMember(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this team member?')) return;
-    
+  const handleDelete = (id: string) => {
+    setPendingDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
     const member = members.find(m => m.id === id);
+    setIsDeleting(true);
     try {
       await deleteMember(id);
       showSuccess('Team member removed', member ? `${member.name} has been removed from the team` : 'Member removed successfully');
+      setPendingDeleteId(null);
     } catch (err) {
       console.error('Delete failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Please try again';
       showError('Delete failed', errorMessage);
       setError('Delete failed. Please try again.');
+      setPendingDeleteId(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+  const pendingDeleteMember = pendingDeleteId
+    ? members.find(m => m.id === pendingDeleteId)
+    : null;
 
   const handleToggleStatus = async (id: string) => {
     const member = members.find(m => m.id === id);
@@ -183,8 +199,8 @@ export const TeamsPage = () => {
               color: 'gray',
             },
             {
-              label: 'Environments',
-              value: 12,
+              label: 'Pending Updates',
+              value: optimisticUpdates.size,
               color: 'blue',
             },
           ]}
@@ -241,11 +257,16 @@ export const TeamsPage = () => {
             </div>
           </div>
 
-          {/* Recent Operations Sidebar */}
+          {/* Recent Operations Sidebar (illustrative sample data) */}
           <div className="bg-white rounded-porsche p-fluid-sm border border-porsche-silver shadow-porsche-sm">
-            <h3 className="text-heading-sm font-bold text-porsche-neutral-800 font-porsche tracking-tight mb-fluid-sm">
-              Recent Operations
-            </h3>
+            <div className="flex items-center gap-2 mb-fluid-sm">
+              <h3 className="text-heading-sm font-bold text-porsche-neutral-800 font-porsche tracking-tight">
+                Recent Operations
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-porsche-neutral-100 text-porsche-neutral-600">
+                Sample
+              </span>
+            </div>
             <div className="space-y-3">
               {[
                 { type: 'environment', action: 'created', name: 'prod-us-east-1', time: '2m ago', icon: 'globe' as const },
@@ -253,9 +274,9 @@ export const TeamsPage = () => {
                 { type: 'deployment', action: 'completed', name: 'api-service v2.1', time: '1h ago', icon: 'check' as const },
                 { type: 'environment', action: 'paused', name: 'dev-staging', time: '2h ago', icon: 'warning' as const },
                 { type: 'member', action: 'added', name: 'Sarah Chen', time: '3h ago', icon: 'userGroup' as const },
-              ].map((op, idx) => (
+              ].map((op) => (
                 <div
-                  key={idx}
+                  key={`${op.type}-${op.name}`}
                   className="flex items-start gap-3 p-2 rounded-porsche hover:bg-porsche-shading transition-colors cursor-pointer"
                 >
                   <div className="mt-0.5">
@@ -273,9 +294,6 @@ export const TeamsPage = () => {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-fluid-sm px-4 py-2 text-xs font-bold uppercase tracking-wide text-porsche-neutral-700 hover:text-porsche-red transition-colors font-porsche">
-              View All Operations →
-            </button>
           </div>
         </div>
       )}
@@ -288,6 +306,22 @@ export const TeamsPage = () => {
           onCancel={handleCloseForm}
         />
       )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        isOpen={pendingDeleteId !== null}
+        title="Remove team member"
+        message={
+          pendingDeleteMember
+            ? `Are you sure you want to remove ${pendingDeleteMember.name} from the team? This action cannot be undone.`
+            : 'Are you sure you want to remove this team member? This action cannot be undone.'
+        }
+        confirmLabel="Remove"
+        isDestructive
+        isBusy={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
 
       {/* Error Display */}
       {error && (

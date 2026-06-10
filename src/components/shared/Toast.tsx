@@ -57,10 +57,17 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     ),
   };
 
+  // Errors/warnings interrupt (assertive); success/info wait their turn (polite).
+  const isUrgent = toast.type === 'error' || toast.type === 'warning';
+
   return (
-    <div className={`rounded-lg border p-4 shadow-lg ${colors[toast.type]} animate-slide-in-right`}>
+    <div
+      role={isUrgent ? 'alert' : 'status'}
+      aria-live={isUrgent ? 'assertive' : 'polite'}
+      className={`rounded-lg border p-4 shadow-lg ${colors[toast.type]} animate-slide-in-right`}
+    >
       <div className="flex items-start">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0" aria-hidden="true">
           {icons[toast.type]}
         </div>
         <div className="ml-3 flex-1">
@@ -79,6 +86,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
         </div>
         <button
           onClick={() => onDismiss(toast.id)}
+          aria-label="Dismiss notification"
           className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

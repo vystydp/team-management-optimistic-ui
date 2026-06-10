@@ -8,6 +8,37 @@ import { useEffect, useState } from 'react';
 import { getPorscheIcon } from '../../utils/porsche-assets';
 import { ICONS_MANIFEST } from '@porsche-design-system/assets';
 
+// Module-level cache shared by every icon instance. Without this, each
+// <PorscheIcon> refetches the same SVG from the CDN on every mount — the Teams
+// page alone re-requested the same icons 5-6x. We cache resolved SVG markup by
+// URL and dedupe concurrent in-flight requests so each icon loads exactly once.
+const svgCache = new Map<string, string>();
+const inFlight = new Map<string, Promise<string>>();
+
+function loadPorscheIcon(url: string): Promise<string> {
+  const cached = svgCache.get(url);
+  if (cached !== undefined) return Promise.resolve(cached);
+
+  let request = inFlight.get(url);
+  if (!request) {
+    request = fetch(url)
+      .then((response) => response.text())
+      .then((svg) => {
+        // Remove XML declaration and clean up SVG
+        const clean = svg.replace(/<\?xml[^>]*\?>/g, '').trim();
+        svgCache.set(url, clean);
+        inFlight.delete(url);
+        return clean;
+      })
+      .catch((error) => {
+        inFlight.delete(url);
+        throw error;
+      });
+    inFlight.set(url, request);
+  }
+  return request;
+}
+
 interface PorscheIconProps {
   /** Name of the Porsche icon */
   name: keyof typeof ICONS_MANIFEST;
@@ -25,21 +56,16 @@ export const PorscheIcon: React.FC<PorscheIconProps> = ({
   className = '',
   ariaLabel,
 }) => {
-  const [svgContent, setSvgContent] = useState<string>('');
   const iconUrl = getPorscheIcon(name);
+  // Seed from cache so already-loaded icons render immediately (no flash).
+  const [svgContent, setSvgContent] = useState<string>(() => svgCache.get(iconUrl) ?? '');
 
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch the SVG content from CDN
-    fetch(iconUrl)
-      .then((response) => response.text())
+    loadPorscheIcon(iconUrl)
       .then((svg) => {
-        if (isMounted) {
-          // Remove XML declaration and clean up SVG
-          const cleanSvg = svg.replace(/<\?xml[^>]*\?>/g, '').trim();
-          setSvgContent(cleanSvg);
-        }
+        if (isMounted) setSvgContent(svg);
       })
       .catch((error) => {
         if (isMounted) {

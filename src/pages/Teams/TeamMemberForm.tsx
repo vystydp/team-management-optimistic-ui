@@ -4,16 +4,16 @@ import {
   Dialog,
   Heading,
   Label,
-  TextField,
-  Input,
   Select,
   SelectValue,
   Popover,
   ListBox,
   ListBoxItem,
-  FieldError,
 } from 'react-aria-components';
 import { TeamMember } from '../../types/team';
+import { FormField } from '../../components/shared/FormField';
+
+type TeamMemberFormData = Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>;
 
 interface TeamMemberFormProps {
   member?: TeamMember | null;
@@ -22,13 +22,7 @@ interface TeamMemberFormProps {
 }
 
 export const TeamMemberForm: React.FC<TeamMemberFormProps> = ({ member, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState<{
-    name: string;
-    email: string;
-    role: string;
-    department: string;
-    status: 'active' | 'inactive';
-  }>({
+  const [formData, setFormData] = useState<TeamMemberFormData>({
     name: '',
     email: '',
     role: '',
@@ -50,6 +44,17 @@ export const TeamMemberForm: React.FC<TeamMemberFormProps> = ({ member, onSubmit
       });
     }
   }, [member]);
+
+  // Update a field and clear its validation error as the user types.
+  const handleFieldChange = (field: keyof TeamMemberFormData) => (value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -103,126 +108,42 @@ export const TeamMemberForm: React.FC<TeamMemberFormProps> = ({ member, onSubmit
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <TextField
+          <FormField
+            label="Name"
             name="name"
             value={formData.name}
-            onChange={(value) => {
-              setFormData((prev) => ({ ...prev, name: value }));
-              if (errors.name) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.name;
-                  return newErrors;
-                });
-              }
-            }}
+            onChange={handleFieldChange('name')}
+            error={errors.name}
             isRequired
-            isInvalid={!!errors.name}
-            className="flex flex-col gap-2"
-          >
-            <Label className="text-sm font-semibold text-porsche-black flex items-center gap-1 tracking-wide uppercase text-xs">
-              Name
-              <span className="text-porsche-red">*</span>
-            </Label>
-            <Input className="w-full px-4 py-3 text-base border border-porsche-silver rounded-porsche bg-white focus:outline-none focus:ring-2 focus:ring-console-primary focus:border-transparent transition-all data-[invalid]:border-porsche-red data-[invalid]:ring-2 data-[invalid]:ring-porsche-red/20 data-[focus-visible]:ring-2 data-[focus-visible]:ring-console-primary shadow-porsche-sm hover:border-porsche-silver-dark" />
-            {errors.name && (
-              <FieldError className="text-sm text-red-600 flex items-center gap-1">
-                <span>⚠️</span>
-                {errors.name}
-              </FieldError>
-            )}
-          </TextField>
+          />
 
-          <TextField
+          <FormField
+            label="Email"
             name="email"
             type="email"
             value={formData.email}
-            onChange={(value) => {
-              setFormData((prev) => ({ ...prev, email: value }));
-              if (errors.email) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.email;
-                  return newErrors;
-                });
-              }
-            }}
+            onChange={handleFieldChange('email')}
+            error={errors.email}
             isRequired
-            isInvalid={!!errors.email}
-            className="flex flex-col gap-2"
-          >
-            <Label className="text-sm font-semibold text-porsche-black flex items-center gap-1 tracking-wide uppercase text-xs">
-              Email
-              <span className="text-porsche-red">*</span>
-            </Label>
-            <Input className="w-full px-4 py-3 text-base border border-porsche-silver rounded-porsche bg-white focus:outline-none focus:ring-2 focus:ring-console-primary focus:border-transparent transition-all data-[invalid]:border-porsche-red data-[invalid]:ring-2 data-[invalid]:ring-porsche-red/20 data-[focus-visible]:ring-2 data-[focus-visible]:ring-console-primary shadow-porsche-sm hover:border-porsche-silver-dark" />
-            {errors.email && (
-              <FieldError className="text-sm text-porsche-red font-medium flex items-center gap-1">
-                <span>⚠️</span>
-                {errors.email}
-              </FieldError>
-            )}
-          </TextField>
+          />
 
-          <TextField
+          <FormField
+            label="Role"
             name="role"
             value={formData.role}
-            onChange={(value) => {
-              setFormData((prev) => ({ ...prev, role: value }));
-              if (errors.role) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.role;
-                  return newErrors;
-                });
-              }
-            }}
+            onChange={handleFieldChange('role')}
+            error={errors.role}
             isRequired
-            isInvalid={!!errors.role}
-            className="flex flex-col gap-2"
-          >
-            <Label className="text-sm font-semibold text-porsche-black flex items-center gap-1 tracking-wide uppercase text-xs">
-              Role
-              <span className="text-porsche-red">*</span>
-            </Label>
-            <Input className="w-full px-4 py-3 text-base border border-porsche-silver rounded-porsche bg-white focus:outline-none focus:ring-2 focus:ring-console-primary focus:border-transparent transition-all data-[invalid]:border-porsche-red data-[invalid]:ring-2 data-[invalid]:ring-porsche-red/20 data-[focus-visible]:ring-2 data-[focus-visible]:ring-console-primary shadow-porsche-sm hover:border-porsche-silver-dark" />
-            {errors.role && (
-              <FieldError className="text-sm text-porsche-red font-medium flex items-center gap-1">
-                <span>⚠️</span>
-                {errors.role}
-              </FieldError>
-            )}
-          </TextField>
+          />
 
-          <TextField
+          <FormField
+            label="Department"
             name="department"
             value={formData.department}
-            onChange={(value) => {
-              setFormData((prev) => ({ ...prev, department: value }));
-              if (errors.department) {
-                setErrors((prev) => {
-                  const newErrors = { ...prev };
-                  delete newErrors.department;
-                  return newErrors;
-                });
-              }
-            }}
+            onChange={handleFieldChange('department')}
+            error={errors.department}
             isRequired
-            isInvalid={!!errors.department}
-            className="flex flex-col gap-2"
-          >
-            <Label className="text-sm font-semibold text-porsche-black flex items-center gap-1 tracking-wide uppercase text-xs">
-              Department
-              <span className="text-porsche-red">*</span>
-            </Label>
-            <Input className="w-full px-4 py-3 text-base border border-porsche-silver rounded-porsche bg-white focus:outline-none focus:ring-2 focus:ring-console-primary focus:border-transparent transition-all data-[invalid]:border-porsche-red data-[invalid]:ring-2 data-[invalid]:ring-porsche-red/20 data-[focus-visible]:ring-2 data-[focus-visible]:ring-console-primary shadow-porsche-sm hover:border-porsche-silver-dark" />
-            {errors.department && (
-              <FieldError className="text-sm text-red-600 flex items-center gap-1">
-                <span>⚠️</span>
-                {errors.department}
-              </FieldError>
-            )}
-          </TextField>
+          />
 
           <Select
             name="status"

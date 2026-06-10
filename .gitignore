@@ -12,6 +12,7 @@ pnpm-debug.log*
 *.tsbuildinfo
 .vscode/
 .idea/
+.claude/
 
 
 .context/

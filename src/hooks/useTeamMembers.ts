@@ -9,14 +9,10 @@ import { TeamMemberModel } from '../models/TeamMemberModel';
  */
 export function useTeamMembers(): {
   members: TeamMember[];
-  loading: boolean;
-  error: Error | null;
-  addMember: (member: TeamMember) => void;
-  updateMember: (id: string, updates: Partial<TeamMember>) => void;
-  removeMember: (id: string) => void;
-  createMember: (data: Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  createMember: (data: Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>) => Promise<TeamMember>;
+  updateMember: (id: string, updates: Partial<TeamMember>) => Promise<TeamMember>;
   deleteMember: (id: string) => Promise<void>;
-  toggleStatus: (id: string) => Promise<void>;
+  toggleStatus: (id: string) => Promise<TeamMember>;
 } {
   const members = useTeamStore((state) => state.members);
   const addOptimistic = useTeamStore((state) => state.addMemberOptimistic);
@@ -155,28 +151,11 @@ export function useTeamMembers(): {
     [members, updateOptimistic, commit, rollback]
   );
 
-  // Wrap functions that need void return type
-  const createMemberVoid = async (data: Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
-    await createMember(data);
-  };
-  
-  const deleteMemberVoid = async (id: string): Promise<void> => {
-    await deleteMember(id);
-  };
-  
-  const toggleStatusVoid = async (id: string): Promise<void> => {
-    await toggleStatus(id);
-  };
-
   return {
     members,
-    createMember: createMemberVoid,
+    createMember,
     updateMember,
-    deleteMember: deleteMemberVoid,
-    toggleStatus: toggleStatusVoid,
-    addMember: () => {}, // stub
-    removeMember: () => {}, // stub  
-    loading: false,
-    error: null,
+    deleteMember,
+    toggleStatus,
   };
 }
