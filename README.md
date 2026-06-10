@@ -6,6 +6,15 @@ A scalable React application demonstrating the **Optimistic UI pattern** with **
 
 This application implements advanced optimistic UI patterns following industry best practices and modern React development standards. It provides instant user feedback by optimistically updating the UI before server confirmation, with intelligent rollback mechanisms for error handling.
 
+## 🧭 What the app does
+
+The UI is a **"CloudOps Platform"** — a self-service console for a platform/DevOps
+team to run their AWS cloud operations from one place: provisioning AWS accounts
+with security guardrails, managing the environments and teams that use them, and
+observing the underlying control plane. (The optimistic-UI work is showcased most
+directly on the **Teams** tab.) It ships in demo mode by default, so all data is
+mocked in the browser — no real AWS account is touched.
+
 ## ✨ Features
 
 - ✅ **Full CRUD Operations** - Create, Read, Update, Delete team members
